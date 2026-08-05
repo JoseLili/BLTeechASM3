@@ -23,7 +23,9 @@ Primera validación física:
 - `VALIDADO`: Simulacro corresponde a GPIO17, permanece `HIGH` en reposo y cambia a `LOW` al presionar.
 - `VALIDADO`: una pulsación de 6.599 s produjo un solo `PRESSED` y un solo `RELEASED` con debounce de 50 ms.
 - `PROPUESTO`: mantener 50 ms como debounce inicial hasta repetir muestras cortas, largas y rápidas.
-- `PENDIENTE`: validar físicamente GPIO27 Paro y GPIO22 Evacuación.
+- `VALIDADO`: Paro corresponde a GPIO27, activo en bajo, y produjo un único ciclo completo.
+- `VALIDADO`: Evacuación corresponde a GPIO22, activo en bajo, y produjo un único ciclo completo.
+- `VALIDADO`: la prueba conjunta reconoció los tres botones sin cruces de mapeo ni duplicados observados.
 
 ### LEDs
 

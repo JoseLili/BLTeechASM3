@@ -41,6 +41,7 @@ Primera evidencia registrada:
 
 - `VALIDADO`: OLED SSD1306 128×64 en I²C-1 `0x3C`; mostró marco y textos de prueba y se limpió al finalizar.
 - `VALIDADO`: botón Simulacro en GPIO17 activo en bajo; una pulsación completa con debounce de 50 ms produjo un único par `PRESSED`/`RELEASED`.
+- `VALIDADO`: prueba conjunta de Simulacro/GPIO17, Paro/GPIO27 y Evacuación/GPIO22; los tres ciclos físicos fueron reconocidos correctamente y sin cruces.
 
 ### LAD-120A real
 
