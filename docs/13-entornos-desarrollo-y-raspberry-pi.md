@@ -60,12 +60,14 @@ No deben versionarse `.venv`, caches, builds ni reportes locales. Las versiones 
 - `VALIDADO`: Raspberry Pi 4 Model B Rev 1.5.
 - `VALIDADO`: Debian GNU/Linux 13 (Trixie), `aarch64`, Python 3.13.5.
 - `VALIDADO`: existen `/dev/i2c-1`, `/dev/i2c-20` y `/dev/i2c-21`.
+- `VALIDADO`: el RTC en I²C-1 dirección `0x68` está expuesto como `/dev/rtc0` mediante el driver `rtc-ds1307`.
 - `VALIDADO`: la partición raíz tiene 22 GB disponibles durante el inventario inicial.
 - `PENDIENTE`: definir política de retención y umbrales de almacenamiento.
 - `PENDIENTE`: `i2c-tools` no está instalado; no es requisito del núcleo y se añadirá solo al preparar pruebas HIL.
 - Modelo de OLED y resolución física.
 - Resultado de detección I²C y direcciones observadas.
 - `VALIDADO`: el usuario `blteech` tiene grupos de acceso a GPIO/I²C/SPI; falta una prueba funcional no destructiva.
+- `PENDIENTE`: el reloj del sistema no está sincronizado, NTP está inactivo y el RTC reportó el año 2000 durante el inventario; no debe usarse aún como evidencia temporal.
 - Revisión de carrier conectada; no conectar LAD-120A hasta tener procedimiento de validación.
 
 ## Relacionados

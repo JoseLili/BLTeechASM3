@@ -26,6 +26,10 @@
 
 Se requieren códigos estables, severidades, política de deduplicación/rate limiting y matriz que determine qué diagnósticos exigen `MAINTENANCE_REQUIRED`.
 
+## Estado del reloj de la unidad de pruebas
+
+`VALIDADO`: la Raspberry Pi expone el RTC I²C `0x68` como `/dev/rtc0`. `PENDIENTE`: durante la primera ejecución el reloj del sistema no estaba sincronizado, NTP estaba inactivo y el RTC reportaba el año 2000. Hasta configurar y validar recuperación tras corte de energía, los timestamps generados por esa unidad no constituyen evidencia temporal confiable.
+
 ## Relacionados
 
 [Modelos](04-logica-de-negocio.md), [estados](05-maquina-de-estados.md) y [certificación](12-requisitos-certificacion.md).
