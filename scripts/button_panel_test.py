@@ -10,7 +10,7 @@ from threading import Event, Lock
 from typing import Protocol
 
 from asm.config import DEFAULT_CONFIG
-from scripts.button_smoke_test import _electrical_level
+from asm.infrastructure.gpio.levels import active_low_level
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +108,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             buttons[spec.gpio] = button
             print(
                 f"READY name={spec.name} gpio={spec.gpio} pressed={button.is_pressed} "
-                f"level={_electrical_level(is_pressed=button.is_pressed)}"
+                f"level={active_low_level(is_active=button.is_pressed)}"
             )
 
         print(

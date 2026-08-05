@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from scripts.button_smoke_test import _electrical_level, _parser
+from asm.infrastructure.gpio.levels import active_low_level
+from scripts.button_smoke_test import _parser
 
 
 def test_button_smoke_defaults_target_simulacro() -> None:
@@ -12,5 +13,5 @@ def test_button_smoke_defaults_target_simulacro() -> None:
 
 
 def test_active_low_level_labels_are_explicit() -> None:
-    assert _electrical_level(is_pressed=False) == "HIGH"
-    assert _electrical_level(is_pressed=True) == "LOW"
+    assert active_low_level(is_active=False) == "HIGH"
+    assert active_low_level(is_active=True) == "LOW"

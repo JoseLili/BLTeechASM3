@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from threading import Event, Lock
 
 from asm.config import DEFAULT_CONFIG
+from asm.infrastructure.gpio.levels import active_low_level
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -16,11 +17,6 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--name", default="Simulacro", help="human-readable button name")
     parser.add_argument("--timeout", type=float, default=30.0, help="maximum wait in seconds")
     return parser
-
-
-def _electrical_level(*, is_pressed: bool) -> str:
-    """Translate the validated active-low wiring into a diagnostic label."""
-    return "LOW" if is_pressed else "HIGH"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -54,7 +50,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             pressed_at = time.monotonic()
             print(
                 f"PRESSED name={args.name} gpio={args.gpio} "
-                f"level={_electrical_level(is_pressed=True)}"
+                f"level={active_low_level(is_active=True)}"
             )
 
     def released() -> None:
@@ -66,7 +62,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             pressed_at = None
             print(
                 f"RELEASED name={args.name} gpio={args.gpio} "
-                f"level={_electrical_level(is_pressed=False)} duration={duration:.3f}s"
+                f"level={active_low_level(is_active=False)} duration={duration:.3f}s"
             )
             completed.set()
 
@@ -76,7 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     initial_pressed = button.is_pressed
     print(
         f"READY name={args.name} gpio={args.gpio} pressed={initial_pressed} "
-        f"level={_electrical_level(is_pressed=initial_pressed)} "
+        f"level={active_low_level(is_active=initial_pressed)} "
         f"debounce={DEFAULT_CONFIG.buttons.debounce_seconds:.3f}s"
     )
     try:
