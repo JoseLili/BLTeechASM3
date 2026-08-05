@@ -18,6 +18,13 @@ GPIO crudo → interpretación eléctrica post-opto → estado funcional → reg
 | Paro | GPIO27 | 13 | normalmente abierto, pull-up, activo bajo previsto |
 | Evacuación | GPIO22 | 15 | normalmente abierto, pull-up, activo bajo previsto |
 
+Primera validación física:
+
+- `VALIDADO`: Simulacro corresponde a GPIO17, permanece `HIGH` en reposo y cambia a `LOW` al presionar.
+- `VALIDADO`: una pulsación de 6.599 s produjo un solo `PRESSED` y un solo `RELEASED` con debounce de 50 ms.
+- `PROPUESTO`: mantener 50 ms como debounce inicial hasta repetir muestras cortas, largas y rápidas.
+- `PENDIENTE`: validar físicamente GPIO27 Paro y GPIO22 Evacuación.
+
 ### LEDs
 
 | Función | BCM | Pin | Estado |

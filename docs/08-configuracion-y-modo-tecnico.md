@@ -50,7 +50,7 @@ nivel GPIO → debounce → PRESS/RELEASE → gesto único → política → com
 - `DECIDIDO`: Paro es siempre inmediato y su activación no puede retrasarse mediante configuración de sitio.
 - EQW y eventos de radio no pasan por políticas de retención de botones.
 
-`VALIDADO` mediante configuración: el debounce inicial es 50 ms y solo admite valores mayores que cero y hasta 200 ms. El valor definitivo se confirmará con los botones físicos.
+`PROPUESTO`: el debounce inicial es 50 ms; su configuración solo admite valores mayores que cero y hasta 200 ms. Una primera pulsación física de Simulacro no produjo duplicados, pero el valor definitivo requiere más muestras y los otros dos botones.
 
 La futura configuración externa deberá auditar cualquier cambio de modo o duración.
 
