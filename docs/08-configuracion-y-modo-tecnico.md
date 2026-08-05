@@ -35,6 +35,23 @@ Una configuración externa inválida deberá impedir su aplicación, conservar l
 
 `PENDIENTE`: agregar secciones tipadas para textos por estado y recursos de audio cuando existan consumidores implementados. No se crearán campos sin uso solamente para anticipar código futuro.
 
+## Política configurable de botones
+
+`DECIDIDO`: separar antirrebote, reconocimiento de gesto y activación de acciones.
+
+```text
+nivel GPIO → debounce → PRESS/RELEASE → gesto único → política → comando
+```
+
+- El debounce elimina flancos eléctricos repetidos; una pulsación sostenida no genera comandos repetidos.
+- La duración se mide con reloj monotónico y sin bloquear el ciclo principal.
+- `PROPUESTO`: cada acción configurable admite modo `IMMEDIATE` o `HOLD`, con duración de retención validada por sitio.
+- `PENDIENTE`: definir valores de fábrica y rangos aprobados para Simulacro y Evacuación.
+- `PENDIENTE`: congelar la política de Paro por contexto; no se asumirá que comparte el retardo de activación de eventos.
+- EQW y eventos de radio no pasan por políticas de retención de botones.
+
+La futura configuración externa deberá auditar cualquier cambio de modo o duración.
+
 ## Acceso
 
 `PROPUESTO`: solo desde `IDLE`, sin evento activo, mediante pulsación larga de Simulacro + Paro. Un EQW válido interrumpe el menú inmediatamente.

@@ -49,6 +49,12 @@ Diseño conceptual, `PROPUESTO`; no constituye todavía una implementación. Las
 
 `PROPUESTO`: conservar un estado operativo principal y un conjunto paralelo de condiciones de salud evita perder información cuando, por ejemplo, existe una alerta durante fallo de energía. Si una falla impide cumplir la función, una política de degradación decide entre continuar el evento, usar salidas disponibles o pasar a mantenimiento. Esa política, precedencias visuales y severidades son `PENDIENTE`.
 
+## Plazos y recuperación
+
+`DECIDIDO`: no existirá un timeout global que fuerce cualquier estado a `IDLE`. Cada estado activo tendrá una condición de terminación o plazo explícito y probado. EQW no se cancelará mediante un watchdog genérico. La recuperación tras reinicio deberá usar evidencia persistente y una política específica antes de reanudar o abandonar un evento.
+
+`PENDIENTE`: definir plazos, finalización de audio, reconocimiento de Paro y recuperación de cada estado.
+
 ## Relacionados
 
 [Prioridades](06-eventos-y-prioridades.md), [modo técnico](08-configuracion-y-modo-tecnico.md) y [pruebas](11-pruebas-y-validacion.md).

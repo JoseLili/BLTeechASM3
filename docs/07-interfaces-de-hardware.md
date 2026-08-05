@@ -50,6 +50,7 @@ GPIO crudo → interpretación eléctrica post-opto → estado funcional → reg
 - `DECIDIDO`: el primer adaptador OLED usará `python3-luma.oled`, instalado globalmente mediante Debian `apt`; véase [ADR-008](adr/ADR-008-adaptador-oled-luma.md).
 - `VALIDADO`: `LumaOledDisplay` presenta la vista `BOOT` producida por `SystemController`.
 - `DECIDIDO`: la animación de marca solo se permite durante arranque; EQW, RWT, simulacro y evacuación usan vistas inmediatas sin animación.
+- `VALIDADO`: la animación de marca configurada a cinco segundos se observó completa y terminó en la vista `BOOT` estable.
 
 ### Mean Well actualmente mapeada
 
