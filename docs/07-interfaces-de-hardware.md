@@ -26,6 +26,8 @@ Primera validación física:
 - `VALIDADO`: Paro corresponde a GPIO27, activo en bajo, y produjo un único ciclo completo.
 - `VALIDADO`: Evacuación corresponde a GPIO22, activo en bajo, y produjo un único ciclo completo.
 - `VALIDADO`: la prueba conjunta reconoció los tres botones sin cruces de mapeo ni duplicados observados.
+- `VALIDADO` mediante pruebas: `GpioButtonPanel` encapsula BCM, pull-up, debounce y callbacks; entrega únicamente comandos semánticos y protege con exclusión mutua el intérprete compartido.
+- `PENDIENTE`: validar físicamente la cadena GPIO → política → comando antes de conectarla a estados.
 
 ### LEDs
 
