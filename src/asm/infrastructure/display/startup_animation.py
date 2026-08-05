@@ -40,13 +40,15 @@ class StartupAnimator:
         *,
         display: StartupFrameDisplay,
         sleep: Callable[[float], None],
-        frame_seconds: float = 0.09,
+        duration_seconds: float,
     ) -> None:
-        if frame_seconds <= 0:
-            raise ValueError("frame_seconds must be greater than zero")
+        if duration_seconds <= 0:
+            raise ValueError("duration_seconds must be greater than zero")
         self._display = display
         self._sleep = sleep
-        self._frame_seconds = frame_seconds
+        # Callers configure a meaningful total duration; frame count remains an
+        # internal rendering detail that can change without editing config.
+        self._frame_seconds = duration_seconds / len(_FRAMES)
 
     def play(self, *, cancelled: Callable[[], bool] = lambda: False) -> bool:
         """Play all frames, returning false when a caller interrupts playback."""

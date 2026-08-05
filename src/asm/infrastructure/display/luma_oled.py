@@ -11,6 +11,7 @@ from contextlib import AbstractContextManager
 from typing import Protocol, Self
 
 from asm.application.ports import SystemView
+from asm.config.models import BrandingConfig
 from asm.infrastructure.display.startup_animation import StartupFrame
 
 
@@ -50,12 +51,19 @@ class LumaOledDisplay:
     can inject an in-memory device and canvas without importing Luma.OLED.
     """
 
-    def __init__(self, *, device: OledDevice, canvas_factory: CanvasFactory) -> None:
+    def __init__(
+        self,
+        *,
+        device: OledDevice,
+        canvas_factory: CanvasFactory,
+        branding: BrandingConfig,
+    ) -> None:
         self._device = device
         self._canvas_factory = canvas_factory
+        self._branding = branding
 
     @classmethod
-    def open(cls, *, bus: int = 1, address: int = 0x3C) -> Self:
+    def open(cls, *, branding: BrandingConfig, bus: int = 1, address: int = 0x3C) -> Self:
         """Open the physical carrier display using its validated I2C values.
 
         Imports remain local by design: PC simulation and domain tests do not
@@ -75,7 +83,7 @@ class LumaOledDisplay:
 
         # Luma and Pillow do not publish complete type information. The narrow
         # protocols above keep the untyped boundary confined to this factory.
-        return cls(device=device, canvas_factory=canvas)
+        return cls(device=device, canvas_factory=canvas, branding=branding)
 
     def show(self, view: SystemView) -> None:
         """Draw one complete frame; Luma swaps it onto the OLED on context exit."""
@@ -91,11 +99,13 @@ class LumaOledDisplay:
         waveform = _waveform_prefix(frame.progress)
         with self._canvas_factory(self._device) as draw:
             draw.rectangle(self._device.bounding_box, outline="white", fill="black")
-            draw.text((40, 6), "BLTeech", fill="white")
+            draw.text((40, 6), _fit(self._branding.company_name), fill="white")
             if len(waveform) >= 2:
                 draw.line(waveform, fill="white")
-            draw.text((42, 39), "ASM v3", fill="white")
-            draw.text((32, 51), f"Iniciando{'.' * frame.dots}", fill="white")
+            product_label = f"{self._branding.product_name} {self._branding.generation}"
+            draw.text((42, 39), _fit(product_label), fill="white")
+            startup_label = f"{self._branding.startup_text}{'.' * frame.dots}"
+            draw.text((32, 51), _fit(startup_label), fill="white")
 
     def clear(self) -> None:
         """Clear the physical display after an explicit shutdown or smoke test."""

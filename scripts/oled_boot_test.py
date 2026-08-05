@@ -8,6 +8,7 @@ import time
 from collections.abc import Sequence
 
 from asm.application.controller import SystemController
+from asm.config import DEFAULT_CONFIG
 from asm.infrastructure.console import JsonLineEventLog, SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
 from asm.infrastructure.display.startup_animation import StartupAnimator
@@ -25,7 +26,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.seconds <= 0:
         raise SystemExit("--seconds must be greater than zero")
 
-    display = LumaOledDisplay.open()
+    display = LumaOledDisplay.open(branding=DEFAULT_CONFIG.branding)
     controller = SystemController(
         clock=SystemClock(),
         display=display,
@@ -33,7 +34,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     # Branding is restricted to startup. Event views always bypass the animator.
-    StartupAnimator(display=display, sleep=time.sleep).play()
+    StartupAnimator(
+        display=display,
+        sleep=time.sleep,
+        duration_seconds=DEFAULT_CONFIG.display.startup_animation_seconds,
+    ).play()
 
     # No synthetic event or automatic state transition is introduced here: the
     # stable image comes from the controller's real BOOT state.

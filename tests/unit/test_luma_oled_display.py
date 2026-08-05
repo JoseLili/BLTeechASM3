@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from asm.application.ports import SystemView
+from asm.config import DEFAULT_CONFIG
 from asm.domain.states import SystemState
 from asm.infrastructure.display.luma_oled import LumaOledDisplay, _fit, _waveform_prefix
 from asm.infrastructure.display.startup_animation import StartupFrame
@@ -41,7 +42,11 @@ def test_oled_adapter_renders_boot_view_and_clears() -> None:
     def canvas_factory(_device: object) -> Iterator[FakeDrawingSurface]:
         yield drawing
 
-    display = LumaOledDisplay(device=device, canvas_factory=canvas_factory)
+    display = LumaOledDisplay(
+        device=device,
+        canvas_factory=canvas_factory,
+        branding=DEFAULT_CONFIG.branding,
+    )
     display.show(
         SystemView(
             state=SystemState.BOOT,
@@ -70,7 +75,11 @@ def test_oled_adapter_renders_branded_startup_frame() -> None:
     def canvas_factory(_device: object) -> Iterator[FakeDrawingSurface]:
         yield drawing
 
-    display = LumaOledDisplay(device=device, canvas_factory=canvas_factory)
+    display = LumaOledDisplay(
+        device=device,
+        canvas_factory=canvas_factory,
+        branding=DEFAULT_CONFIG.branding,
+    )
     display.show_startup_frame(StartupFrame(progress=1.0, dots=3))
 
     text_values = [payload[1] for name, payload in drawing.operations if name == "text"]

@@ -18,7 +18,7 @@ class CapturingDisplay:
 def test_startup_animation_reaches_complete_frame() -> None:
     display = CapturingDisplay()
     sleeps: list[float] = []
-    animator = StartupAnimator(display=display, sleep=sleeps.append, frame_seconds=0.05)
+    animator = StartupAnimator(display=display, sleep=sleeps.append, duration_seconds=0.6)
 
     completed = animator.play()
 
@@ -27,7 +27,8 @@ def test_startup_animation_reaches_complete_frame() -> None:
     assert display.frames[0].progress == 0.0
     assert display.frames[-1].progress == 1.0
     assert display.frames[-1].dots == 3
-    assert sleeps == [0.05] * 12
+    assert len(sleeps) == 12
+    assert sum(sleeps) == pytest.approx(0.6)
 
 
 def test_startup_animation_stops_before_next_frame_when_cancelled() -> None:
@@ -39,7 +40,7 @@ def test_startup_animation_stops_before_next_frame_when_cancelled() -> None:
         cancellation_checks += 1
         return cancellation_checks > 4
 
-    animator = StartupAnimator(display=display, sleep=lambda _seconds: None)
+    animator = StartupAnimator(display=display, sleep=lambda _seconds: None, duration_seconds=1)
 
     completed = animator.play(cancelled=cancelled)
 
@@ -58,4 +59,8 @@ def test_startup_frame_rejects_invalid_values(progress: float, dots: int) -> Non
 
 def test_startup_animation_rejects_non_positive_frame_time() -> None:
     with pytest.raises(ValueError, match="greater than zero"):
-        StartupAnimator(display=CapturingDisplay(), sleep=lambda _seconds: None, frame_seconds=0)
+        StartupAnimator(
+            display=CapturingDisplay(),
+            sleep=lambda _seconds: None,
+            duration_seconds=0,
+        )

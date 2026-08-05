@@ -48,6 +48,8 @@ GPIO crudo → interpretación eléctrica post-opto → estado funcional → reg
 - `VALIDADO`: EEPROM detectada en `0x57`.
 - `VALIDADO`: RTC en `0x68`, reclamado por el driver del kernel y expuesto como `/dev/rtc0`.
 - `DECIDIDO`: el primer adaptador OLED usará `python3-luma.oled`, instalado globalmente mediante Debian `apt`; véase [ADR-008](adr/ADR-008-adaptador-oled-luma.md).
+- `VALIDADO`: `LumaOledDisplay` presenta la vista `BOOT` producida por `SystemController`.
+- `DECIDIDO`: la animación de marca solo se permite durante arranque; EQW, RWT, simulacro y evacuación usan vistas inmediatas sin animación.
 
 ### Mean Well actualmente mapeada
 
