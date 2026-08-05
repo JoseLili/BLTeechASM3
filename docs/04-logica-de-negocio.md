@@ -7,6 +7,10 @@
 - `DECIDIDO`: toda orden de Paro genera auditoría.
 - `PROPUESTO`: los modelos siguientes son conceptuales; campos y tipos definitivos permanecen abiertos.
 
+## Estado de implementación
+
+`VALIDADO` en simulación: existen `SystemState`, el subconjunto inicial de `EventType`, `StateTransition` y `AuditRecord`, junto con reglas puras y fakes. El resto de los modelos de este documento continúa `PENDIENTE`.
+
 ## Modelos conceptuales
 
 ### `SystemState`

@@ -4,6 +4,10 @@
 
 Diseño conceptual, `PROPUESTO`; no constituye todavía una implementación. Las fallas concurrentes necesitan una decisión explícita antes de congelar el modelo.
 
+## Estado de implementación
+
+`VALIDADO` en simulación: la primera rebanada implementa únicamente `BOOT → SELF_TEST → IDLE → SIMULACRO_ACTIVE → STOPPED`. Toda transición no incluida se rechaza y audita. Los demás estados permanecen conceptuales hasta acordar sus condiciones y pruebas.
+
 ## Estados y entradas principales
 
 | Estado | Entrada / condición | Acción conceptual | Salidas normales |

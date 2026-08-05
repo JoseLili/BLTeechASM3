@@ -26,6 +26,7 @@ python -m pip install -e '.[dev]'
 python -m pytest
 python -m ruff check .
 python -m mypy
+python -m asm
 ```
 
 ### Raspberry Pi
