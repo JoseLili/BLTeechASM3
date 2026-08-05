@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from asm.application.controller import SystemController
 from asm.infrastructure.console import JsonLineEventLog, SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
+from asm.infrastructure.display.startup_animation import StartupAnimator
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -31,8 +32,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         event_log=JsonLineEventLog(stream=sys.stdout),
     )
 
-    # This is intentionally the only application action in this increment.
-    # No synthetic event or automatic state transition is introduced here.
+    # Branding is restricted to startup. Event views always bypass the animator.
+    StartupAnimator(display=display, sleep=time.sleep).play()
+
+    # No synthetic event or automatic state transition is introduced here: the
+    # stable image comes from the controller's real BOOT state.
     controller.present()
     try:
         time.sleep(args.seconds)

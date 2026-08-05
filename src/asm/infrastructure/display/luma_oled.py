@@ -11,6 +11,7 @@ from contextlib import AbstractContextManager
 from typing import Protocol, Self
 
 from asm.application.ports import SystemView
+from asm.infrastructure.display.startup_animation import StartupFrame
 
 
 class DrawingSurface(Protocol):
@@ -85,6 +86,45 @@ class LumaOledDisplay:
             draw.text((5, 27), _fit(view.detail), fill="white")
             draw.text((5, 47), _fit(f"Estado: {view.state}"), fill="white")
 
+    def show_startup_frame(self, frame: StartupFrame) -> None:
+        """Draw one branded frame without changing or interpreting system state."""
+        waveform = _waveform_prefix(frame.progress)
+        with self._canvas_factory(self._device) as draw:
+            draw.rectangle(self._device.bounding_box, outline="white", fill="black")
+            draw.text((40, 6), "BLTeech", fill="white")
+            if len(waveform) >= 2:
+                draw.line(waveform, fill="white")
+            draw.text((42, 39), "ASM v3", fill="white")
+            draw.text((32, 51), f"Iniciando{'.' * frame.dots}", fill="white")
+
     def clear(self) -> None:
         """Clear the physical display after an explicit shutdown or smoke test."""
         self._device.clear()
+
+
+# A compact seismic trace gives the startup sequence a BLTeech identity while
+# keeping every frame inexpensive enough for the I2C display.
+_WAVEFORM = (
+    (7, 29),
+    (22, 29),
+    (27, 25),
+    (32, 34),
+    (38, 16),
+    (44, 43),
+    (51, 23),
+    (57, 29),
+    (72, 29),
+    (77, 26),
+    (82, 32),
+    (88, 20),
+    (94, 38),
+    (101, 27),
+    (107, 29),
+    (121, 29),
+)
+
+
+def _waveform_prefix(progress: float) -> tuple[tuple[int, int], ...]:
+    """Reveal the seismic trace from left to right for the current frame."""
+    visible_points = max(1, round(progress * (len(_WAVEFORM) - 1)) + 1)
+    return _WAVEFORM[:visible_points]

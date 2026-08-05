@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 
 from asm.application.ports import SystemView
 from asm.domain.states import SystemState
-from asm.infrastructure.display.luma_oled import LumaOledDisplay, _fit
+from asm.infrastructure.display.luma_oled import LumaOledDisplay, _fit, _waveform_prefix
+from asm.infrastructure.display.startup_animation import StartupFrame
 
 
 @dataclass(slots=True)
@@ -59,3 +60,20 @@ def test_oled_adapter_renders_boot_view_and_clears() -> None:
 def test_fit_normalizes_and_truncates_long_text() -> None:
     assert _fit("  Sistema    listo  ") == "Sistema listo"
     assert _fit("x" * 21) == f"{'x' * 19}…"
+
+
+def test_oled_adapter_renders_branded_startup_frame() -> None:
+    device = FakeDevice()
+    drawing = FakeDrawingSurface()
+
+    @contextmanager
+    def canvas_factory(_device: object) -> Iterator[FakeDrawingSurface]:
+        yield drawing
+
+    display = LumaOledDisplay(device=device, canvas_factory=canvas_factory)
+    display.show_startup_frame(StartupFrame(progress=1.0, dots=3))
+
+    text_values = [payload[1] for name, payload in drawing.operations if name == "text"]
+    assert text_values == ["BLTeech", "ASM v3", "Iniciando..."]
+    assert any(name == "line" for name, _payload in drawing.operations)
+    assert _waveform_prefix(1.0)[-1] == (121, 29)
