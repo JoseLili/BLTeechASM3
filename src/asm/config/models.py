@@ -43,8 +43,20 @@ class DisplayConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class ButtonInputConfig:
+    """Electrical filtering shared by the three physical panel buttons."""
+
+    debounce_seconds: float
+
+    def __post_init__(self) -> None:
+        if not 0 < self.debounce_seconds <= 0.2:
+            raise ValueError("debounce_seconds must be greater than zero and at most 0.2")
+
+
+@dataclass(frozen=True, slots=True)
 class SystemConfig:
     """Root object passed explicitly to application composition code."""
 
     branding: BrandingConfig
     display: DisplayConfig
+    buttons: ButtonInputConfig

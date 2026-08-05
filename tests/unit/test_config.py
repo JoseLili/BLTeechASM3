@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from asm.config import DEFAULT_CONFIG, BrandingConfig, DisplayConfig
+from asm.config import DEFAULT_CONFIG, BrandingConfig, ButtonInputConfig, DisplayConfig
 
 
 def test_factory_defaults_describe_current_brand_and_animation() -> None:
@@ -10,6 +10,7 @@ def test_factory_defaults_describe_current_brand_and_animation() -> None:
     assert DEFAULT_CONFIG.branding.product_name == "ASM"
     assert DEFAULT_CONFIG.branding.generation == "v3"
     assert DEFAULT_CONFIG.display.startup_animation_seconds == 5.0
+    assert DEFAULT_CONFIG.buttons.debounce_seconds == 0.05
 
 
 @pytest.mark.parametrize(
@@ -33,3 +34,9 @@ def test_branding_rejects_empty_required_text(field_name: str) -> None:
 def test_display_rejects_unsafe_animation_duration(seconds: float) -> None:
     with pytest.raises(ValueError, match="at most 10"):
         DisplayConfig(startup_animation_seconds=seconds)
+
+
+@pytest.mark.parametrize("seconds", [0, -0.01, 0.201])
+def test_buttons_reject_invalid_debounce(seconds: float) -> None:
+    with pytest.raises(ValueError, match="at most 0.2"):
+        ButtonInputConfig(debounce_seconds=seconds)
