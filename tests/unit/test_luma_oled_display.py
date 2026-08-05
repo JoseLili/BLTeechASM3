@@ -1,0 +1,61 @@
+from __future__ import annotations
+
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+
+from asm.application.ports import SystemView
+from asm.domain.states import SystemState
+from asm.infrastructure.display.luma_oled import LumaOledDisplay, _fit
+
+
+@dataclass(slots=True)
+class FakeDevice:
+    bounding_box: tuple[int, int, int, int] = (0, 0, 127, 63)
+    cleared: bool = False
+
+    def clear(self) -> None:
+        self.cleared = True
+
+
+@dataclass(slots=True)
+class FakeDrawingSurface:
+    operations: list[tuple[str, tuple[object, ...]]] = field(default_factory=list)
+
+    def rectangle(self, xy: object, *, outline: str, fill: str) -> None:
+        self.operations.append(("rectangle", (xy, outline, fill)))
+
+    def line(self, xy: object, *, fill: str) -> None:
+        self.operations.append(("line", (xy, fill)))
+
+    def text(self, xy: object, text: str, *, fill: str) -> None:
+        self.operations.append(("text", (xy, text, fill)))
+
+
+def test_oled_adapter_renders_boot_view_and_clears() -> None:
+    device = FakeDevice()
+    drawing = FakeDrawingSurface()
+
+    @contextmanager
+    def canvas_factory(_device: object) -> Iterator[FakeDrawingSurface]:
+        yield drawing
+
+    display = LumaOledDisplay(device=device, canvas_factory=canvas_factory)
+    display.show(
+        SystemView(
+            state=SystemState.BOOT,
+            title="ASM BLTeech",
+            detail="Iniciando",
+        )
+    )
+    display.clear()
+
+    text_values = [payload[1] for name, payload in drawing.operations if name == "text"]
+    assert text_values == ["ASM BLTeech", "Iniciando", "Estado: BOOT"]
+    assert drawing.operations[0][0] == "rectangle"
+    assert device.cleared is True
+
+
+def test_fit_normalizes_and_truncates_long_text() -> None:
+    assert _fit("  Sistema    listo  ") == "Sistema listo"
+    assert _fit("x" * 21) == f"{'x' * 19}…"
