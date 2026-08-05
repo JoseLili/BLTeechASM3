@@ -46,11 +46,13 @@ nivel GPIO → debounce → PRESS/RELEASE → gesto único → política → com
 - El debounce elimina flancos eléctricos repetidos; una pulsación sostenida no genera comandos repetidos.
 - La duración se mide con reloj monotónico y sin bloquear el ciclo principal.
 - `DECIDIDO`: Simulacro y Evacuación admiten modo configurable `IMMEDIATE` o `HOLD`, con duración de retención validada por sitio.
-- `PENDIENTE`: definir valores de fábrica y rangos aprobados para Simulacro y Evacuación.
+- `DECIDIDO`: Simulacro y Evacuación usan `IMMEDIATE` como valor de fábrica; `HOLD` conserva un umbral configurable de referencia de cinco segundos.
 - `DECIDIDO`: Paro es siempre inmediato y su activación no puede retrasarse mediante configuración de sitio.
 - EQW y eventos de radio no pasan por políticas de retención de botones.
 
-`PROPUESTO`: el debounce inicial es 50 ms; su configuración solo admite valores mayores que cero y hasta 200 ms. Una primera pulsación física de Simulacro no produjo duplicados, pero el valor definitivo requiere más muestras y los otros dos botones.
+`PROPUESTO`: el debounce inicial es 50 ms; su configuración solo admite valores mayores que cero y hasta 200 ms. La prueba conjunta no produjo duplicados, pero el valor definitivo requiere más muestras cortas, largas y rápidas.
+
+`VALIDADO` mediante pruebas: `ButtonPolicyInterpreter` emite como máximo un comando por gesto, cancela una retención liberada antes del umbral, no bloquea mientras espera y exige liberación antes de permitir otra activación. La conexión de estos comandos con la máquina de estados permanece `PENDIENTE`.
 
 La futura configuración externa deberá auditar cualquier cambio de modo o duración.
 

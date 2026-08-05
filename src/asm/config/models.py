@@ -8,6 +8,7 @@ here, because they must not change through an operator-edited file.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 
 def _required_text(value: str, field_name: str) -> None:
@@ -42,11 +43,32 @@ class DisplayConfig:
             raise ValueError("startup_animation_seconds must be greater than zero and at most 10")
 
 
+class ActivationMode(StrEnum):
+    """Operator-selectable activation behavior for non-emergency buttons."""
+
+    IMMEDIATE = "IMMEDIATE"
+    HOLD = "HOLD"
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigurableButtonAction:
+    """Activation policy available only to Simulacro and Evacuación."""
+
+    mode: ActivationMode
+    hold_seconds: float
+
+    def __post_init__(self) -> None:
+        if not 0 < self.hold_seconds <= 10:
+            raise ValueError("hold_seconds must be greater than zero and at most 10")
+
+
 @dataclass(frozen=True, slots=True)
 class ButtonInputConfig:
     """Electrical filtering shared by the three physical panel buttons."""
 
     debounce_seconds: float
+    simulacro: ConfigurableButtonAction
+    evacuacion: ConfigurableButtonAction
 
     def __post_init__(self) -> None:
         if not 0 < self.debounce_seconds <= 0.2:

@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from asm.config.models import BrandingConfig, ButtonInputConfig, DisplayConfig, SystemConfig
+from asm.config.models import (
+    ActivationMode,
+    BrandingConfig,
+    ButtonInputConfig,
+    ConfigurableButtonAction,
+    DisplayConfig,
+    SystemConfig,
+)
 
 DEFAULT_CONFIG = SystemConfig(
     branding=BrandingConfig(
@@ -12,5 +19,15 @@ DEFAULT_CONFIG = SystemConfig(
         startup_text="Iniciando",
     ),
     display=DisplayConfig(startup_animation_seconds=5.0),
-    buttons=ButtonInputConfig(debounce_seconds=0.05),
+    buttons=ButtonInputConfig(
+        debounce_seconds=0.05,
+        simulacro=ConfigurableButtonAction(
+            mode=ActivationMode.IMMEDIATE,
+            hold_seconds=5.0,
+        ),
+        evacuacion=ConfigurableButtonAction(
+            mode=ActivationMode.IMMEDIATE,
+            hold_seconds=5.0,
+        ),
+    ),
 )

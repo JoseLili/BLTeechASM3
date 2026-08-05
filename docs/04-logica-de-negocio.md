@@ -11,6 +11,8 @@
 
 `VALIDADO` en simulación: existen `SystemState`, el subconjunto inicial de `EventType`, `StateTransition` y `AuditRecord`, junto con reglas puras y fakes. El resto de los modelos de este documento continúa `PENDIENTE`.
 
+`VALIDADO` mediante pruebas: el intérprete semántico de botones separa identidad física, política de activación y comando. Paro se emite siempre al presionar; Simulacro y Evacuación admiten políticas inmediatas o de retención sin generar repeticiones.
+
 ## Modelos conceptuales
 
 ### `SystemState`
