@@ -37,6 +37,10 @@ Las pruebas avanzan de reglas puras a integración simulada y después a hardwar
 - Arranque, reinicio, carga, ruido, temperatura y recuperación.
 - Evidencia específica por cada una de las cinco unidades.
 
+Primera evidencia registrada:
+
+- `VALIDADO`: OLED SSD1306 128×64 en I²C-1 `0x3C`; mostró marco y textos de prueba y se limpió al finalizar.
+
 ### LAD-120A real
 
 - Tabla de verdad extremo a extremo para CN2-1/2/3/5/6.

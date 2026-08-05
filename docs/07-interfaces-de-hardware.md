@@ -41,6 +41,14 @@ GPIO crudo → interpretación eléctrica post-opto → estado funcional → reg
 
 `PENDIENTE`: inventariar pull-ups poblados y resistencia equivalente. `DECIDIDO`: I²C no transportará audio continuo.
 
+#### Validación inicial en Raspberry Pi
+
+- `VALIDADO`: `/dev/i2c-1` corresponde al bus de la carrier.
+- `VALIDADO`: OLED SSD1306 128×64 detectada en `0x3C` y texto visible correctamente.
+- `VALIDADO`: EEPROM detectada en `0x57`.
+- `VALIDADO`: RTC en `0x68`, reclamado por el driver del kernel y expuesto como `/dev/rtc0`.
+- `DECIDIDO`: el primer adaptador OLED usará `python3-luma.oled`, instalado globalmente mediante Debian `apt`; véase [ADR-008](adr/ADR-008-adaptador-oled-luma.md).
+
 ### Mean Well actualmente mapeada
 
 | Función física | BCM | Pin |
