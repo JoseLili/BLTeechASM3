@@ -82,9 +82,14 @@ la señal entregada al decoder SAME.
 Diagnóstico, Sistema e Información, submenús, cursor desplazable, Enter,
 Regresar y acción global de Escucha.
 
-`PENDIENTE`: conectar las hojas con ajustes reales, definir timeout y aplicar
-edición transaccional. Hasta entonces el diagnóstico OLED es deliberadamente
-de solo lectura.
+`IMPLEMENTADO`: la hoja `Recepción → Canal C1-C7` abre un editor limitado a los
+siete canales congelados. Arriba/Abajo recorren la lista; el primer Enter aplica
+el perfil temporal y exige readback del SA818; el segundo Enter guarda. Regresar
+antes de aplicar sale sin cambios y, después de verificar, restaura el canal
+confirmado anterior. Escucha conserva su acción global durante la edición.
+
+`PENDIENTE`: conectar las demás hojas con ajustes reales y definir el timeout
+general del menú de producción.
 
 ## Cambio transaccional de canal
 
@@ -97,8 +102,10 @@ seleccionar C1–C7 → aplicar temporalmente → verificar receptor
 
 `IMPLEMENTADO`: C7 es el valor de fábrica y produce 162.5500 MHz sin almacenar
 una frecuencia independiente. `ReceiverService` sólo acepta un cambio cuando
-el adaptador devuelve el mismo perfil como verificado. La escritura persistente
-y el flujo OLED de doble confirmación permanecen `PENDIENTE`.
+el adaptador devuelve el mismo perfil como verificado. El canal confirmado se
+escribe atómicamente como JSON versionado; nunca se persiste una frecuencia
+separada. El diagnóstico usa por defecto
+`~/.local/state/asm-blteech/receiver.json`.
 
 ## Reglas de persistencia
 

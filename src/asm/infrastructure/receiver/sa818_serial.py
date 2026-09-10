@@ -8,6 +8,7 @@ from collections.abc import Callable
 from types import TracebackType
 from typing import Protocol, Self
 
+from asm.application.receiver_service import ReceiverError
 from asm.domain.receiver import ReceiverConfigurationResult, ReceiverProfile
 
 
@@ -25,7 +26,7 @@ class SerialPort(Protocol):
     def close(self) -> None: ...
 
 
-class Sa818Error(RuntimeError):
+class Sa818Error(ReceiverError):
     """Base class for actionable SA818 adapter failures."""
 
 
@@ -186,4 +187,3 @@ class Sa818SerialReceiver:
         if not response:
             raise Sa818ProtocolError(f"empty response to {command!r}")
         return response
-

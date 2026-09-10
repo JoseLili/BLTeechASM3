@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Protocol
 
 from asm.domain.models import AuditRecord
-from asm.domain.receiver import ReceiverConfigurationResult, ReceiverProfile
+from asm.domain.receiver import ReceiverChannel, ReceiverConfigurationResult, ReceiverProfile
 from asm.domain.states import SystemState
 
 
@@ -65,3 +65,11 @@ class ReceiverPort(Protocol):
     """Configure and verify a receiver without exposing its hardware protocol."""
 
     def configure(self, profile: ReceiverProfile) -> ReceiverConfigurationResult: ...
+
+
+class ReceiverChannelRepository(Protocol):
+    """Load and atomically save the last confirmed receiver channel."""
+
+    def load(self) -> ReceiverChannel | None: ...
+
+    def save(self, channel: ReceiverChannel) -> None: ...

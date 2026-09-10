@@ -50,6 +50,10 @@ Primera evidencia registrada:
   `1,162.5500,162.5500,0000,0,0000`.
 - `VALIDADO` mediante dobles: timeout, rechazo, escritura UART corta y readback
   distinto impiden reportar una configuración como verificada.
+- `VALIDADO` mediante dobles: el editor C1-C7 requiere aplicar/verificar antes
+  de guardar; cancelar o fallar la escritura restaura el canal confirmado.
+- `VALIDADO`: el SA818S-V cambió físicamente de C7 a C6, leyó de vuelta
+  162.5250 MHz y después restauró C7/162.5500 MHz correctamente.
 
 ### LAD-120A real
 

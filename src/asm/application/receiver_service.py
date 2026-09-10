@@ -8,7 +8,11 @@ from asm.application.ports import ReceiverPort
 from asm.domain.receiver import ReceiverConfigurationResult, ReceiverProfile
 
 
-class ReceiverVerificationError(RuntimeError):
+class ReceiverError(RuntimeError):
+    """Base error for receiver operations exposed to application controllers."""
+
+
+class ReceiverVerificationError(ReceiverError):
     """Raised when an adapter cannot prove that the requested profile is active."""
 
 
@@ -23,4 +27,3 @@ class ReceiverService:
         if not result.verified or result.profile != profile:
             raise ReceiverVerificationError("receiver did not verify the requested profile")
         return result
-

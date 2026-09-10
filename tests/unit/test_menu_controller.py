@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import pytest
+
 from asm.application.menu_controller import (
     DEFAULT_MENU,
     MenuAction,
@@ -96,3 +98,21 @@ def test_closed_menu_ignores_navigation() -> None:
 
     assert menu.handle(MenuCommand.MOVE_DOWN) is None
     assert display.history == []
+
+
+def test_refresh_renders_current_page_after_temporary_view() -> None:
+    menu, display = _controller()
+    menu.open()
+    menu.handle(MenuCommand.CONFIRM)
+
+    view = menu.refresh()
+
+    assert view.title == "Recepcion"
+    assert display.history[-1] == view
+
+
+def test_refresh_rejects_closed_menu() -> None:
+    menu, _display = _controller()
+
+    with pytest.raises(RuntimeError, match="closed menu"):
+        menu.refresh()

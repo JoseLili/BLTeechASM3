@@ -100,6 +100,12 @@ class MenuController:
         self._stack = [_Frame(self._root)]
         return self._render()
 
+    def refresh(self) -> MenuView:
+        """Render the current page after a temporary application view closes."""
+        if not self._stack:
+            raise RuntimeError("cannot refresh a closed menu")
+        return self._render()
+
     def handle(self, command: MenuCommand) -> MenuAction | None:
         """Apply one semantic command; closed menus ignore all input."""
         if command is MenuCommand.TOGGLE_LISTEN:
