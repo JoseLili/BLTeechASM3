@@ -10,7 +10,7 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from typing import Protocol, Self
 
-from asm.application.ports import SystemView
+from asm.application.ports import MenuView, SystemView
 from asm.config.models import BrandingConfig
 from asm.infrastructure.display.startup_animation import StartupFrame
 
@@ -93,6 +93,22 @@ class LumaOledDisplay:
             draw.line((5, 20, 122, 20), fill="white")
             draw.text((5, 27), _fit(view.detail), fill="white")
             draw.text((5, 47), _fit(f"Estado: {view.state}"), fill="white")
+
+    def show_menu(self, view: MenuView) -> None:
+        """Render a four-row scrolling menu with the selected row marked."""
+        visible_rows = 4
+        max_start = max(0, len(view.items) - visible_rows)
+        start = min(max(0, view.selected_index - visible_rows + 1), max_start)
+        visible_items = view.items[start : start + visible_rows]
+
+        with self._canvas_factory(self._device) as draw:
+            draw.rectangle(self._device.bounding_box, outline="white", fill="black")
+            draw.text((3, 1), _fit(view.title, 19), fill="white")
+            draw.line((2, 12, 125, 12), fill="white")
+            for row, label in enumerate(visible_items):
+                absolute_index = start + row
+                prefix = ">" if absolute_index == view.selected_index else " "
+                draw.text((3, 16 + row * 12), f"{prefix}{_fit(label, 17)}", fill="white")
 
     def show_startup_frame(self, frame: StartupFrame) -> None:
         """Draw one branded frame without changing or interpreting system state."""

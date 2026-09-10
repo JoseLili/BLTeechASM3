@@ -43,6 +43,13 @@ Primera evidencia registrada:
 - `VALIDADO`: botón Simulacro en GPIO17 activo en bajo; una pulsación completa con debounce de 50 ms produjo un único par `PRESSED`/`RELEASED`.
 - `VALIDADO`: prueba conjunta de Simulacro/GPIO17, Paro/GPIO27 y Evacuación/GPIO22; los tres ciclos físicos fueron reconocidos correctamente y sin cruces.
 - `VALIDADO` mediante dobles: el adaptador GPIO produce los tres comandos semánticos, libera recursos y soporta `HOLD` mediante polling no bloqueante.
+- `VALIDADO`: PCF8574P `0x20` entrega botones de menú semánticos y la OLED mostró
+  el árbol navegable completo en Carrier v3.1 Rev A.
+- `VALIDADO`: SA818S-V sobre `/dev/serial0` aceptó conexión, grupo GOLD C7,
+  volumen 6 y filtros 0,0,0; `AT+DMOREADGROUP` devolvió
+  `1,162.5500,162.5500,0000,0,0000`.
+- `VALIDADO` mediante dobles: timeout, rechazo, escritura UART corta y readback
+  distinto impiden reportar una configuración como verificada.
 
 ### LAD-120A real
 

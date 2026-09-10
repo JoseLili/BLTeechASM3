@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from asm.domain.receiver import ReceiverChannel
+
 
 def _required_text(value: str, field_name: str) -> None:
     if not value.strip():
@@ -76,9 +78,39 @@ class ButtonInputConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class MenuButtonInputConfig:
+    """Electrical filtering for the dedicated PCF8574 menu keypad interrupt."""
+
+    debounce_seconds: float
+
+    def __post_init__(self) -> None:
+        if not 0 < self.debounce_seconds <= 0.2:
+            raise ValueError("debounce_seconds must be greater than zero and at most 0.2")
+
+
+@dataclass(frozen=True, slots=True)
+class ReceiverConfig:
+    """Startup channel and Linux UART timing for the installed receiver."""
+
+    channel: ReceiverChannel
+    serial_device: str
+    command_timeout_seconds: float
+    startup_settle_seconds: float
+
+    def __post_init__(self) -> None:
+        _required_text(self.serial_device, "serial_device")
+        if not 0 < self.command_timeout_seconds <= 10:
+            raise ValueError("command_timeout_seconds must be greater than zero and at most 10")
+        if not 0 <= self.startup_settle_seconds <= 10:
+            raise ValueError("startup_settle_seconds must be between zero and 10")
+
+
+@dataclass(frozen=True, slots=True)
 class SystemConfig:
     """Root object passed explicitly to application composition code."""
 
     branding: BrandingConfig
     display: DisplayConfig
     buttons: ButtonInputConfig
+    menu_buttons: MenuButtonInputConfig
+    receiver: ReceiverConfig

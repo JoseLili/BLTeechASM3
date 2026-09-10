@@ -21,6 +21,11 @@ def test_factory_defaults_describe_current_brand_and_animation() -> None:
     assert DEFAULT_CONFIG.buttons.debounce_seconds == 0.05
     assert DEFAULT_CONFIG.buttons.simulacro.mode is ActivationMode.IMMEDIATE
     assert DEFAULT_CONFIG.buttons.evacuacion.mode is ActivationMode.IMMEDIATE
+    assert DEFAULT_CONFIG.menu_buttons.debounce_seconds == 0.05
+    assert DEFAULT_CONFIG.receiver.channel.value == "C7"
+    assert DEFAULT_CONFIG.receiver.serial_device == "/dev/serial0"
+    assert DEFAULT_CONFIG.receiver.command_timeout_seconds == 2.0
+    assert DEFAULT_CONFIG.receiver.startup_settle_seconds == 1.0
 
 
 @pytest.mark.parametrize(
@@ -50,6 +55,24 @@ def test_display_rejects_unsafe_animation_duration(seconds: float) -> None:
 def test_buttons_reject_invalid_debounce(seconds: float) -> None:
     with pytest.raises(ValueError, match="at most 0.2"):
         replace(DEFAULT_CONFIG.buttons, debounce_seconds=seconds)
+
+
+@pytest.mark.parametrize("seconds", [0, -0.01, 0.201])
+def test_menu_buttons_reject_invalid_debounce(seconds: float) -> None:
+    with pytest.raises(ValueError, match="at most 0.2"):
+        replace(DEFAULT_CONFIG.menu_buttons, debounce_seconds=seconds)
+
+
+@pytest.mark.parametrize("seconds", [0, -1, 10.1])
+def test_receiver_rejects_invalid_command_timeout(seconds: float) -> None:
+    with pytest.raises(ValueError, match="at most 10"):
+        replace(DEFAULT_CONFIG.receiver, command_timeout_seconds=seconds)
+
+
+@pytest.mark.parametrize("seconds", [-1, 10.1])
+def test_receiver_rejects_invalid_startup_settle(seconds: float) -> None:
+    with pytest.raises(ValueError, match="between zero and 10"):
+        replace(DEFAULT_CONFIG.receiver, startup_settle_seconds=seconds)
 
 
 @pytest.mark.parametrize("seconds", [0, -1, 10.1])

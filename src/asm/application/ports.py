@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Protocol
 
 from asm.domain.models import AuditRecord
+from asm.domain.receiver import ReceiverConfigurationResult, ReceiverProfile
 from asm.domain.states import SystemState
 
 
@@ -17,6 +18,23 @@ class SystemView:
     state: SystemState
     title: str
     detail: str
+
+
+@dataclass(frozen=True, slots=True)
+class MenuView:
+    """One menu page rendered without exposing display technology."""
+
+    title: str
+    items: tuple[str, ...]
+    selected_index: int
+
+    def __post_init__(self) -> None:
+        if not self.title.strip():
+            raise ValueError("menu title must not be empty")
+        if not self.items:
+            raise ValueError("menu must contain at least one item")
+        if not 0 <= self.selected_index < len(self.items):
+            raise ValueError("selected_index must reference a menu item")
 
 
 class ClockPort(Protocol):
@@ -31,7 +49,19 @@ class DisplayPort(Protocol):
     def show(self, view: SystemView) -> None: ...
 
 
+class MenuDisplayPort(Protocol):
+    """Present complete menu pages independently from operational states."""
+
+    def show_menu(self, view: MenuView) -> None: ...
+
+
 class EventLogRepository(Protocol):
     """Persist audit records in append-only order."""
 
     def append(self, record: AuditRecord) -> None: ...
+
+
+class ReceiverPort(Protocol):
+    """Configure and verify a receiver without exposing its hardware protocol."""
+
+    def configure(self, profile: ReceiverProfile) -> ReceiverConfigurationResult: ...

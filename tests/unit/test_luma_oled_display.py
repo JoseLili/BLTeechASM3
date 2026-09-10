@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from asm.application.ports import SystemView
+from asm.application.ports import MenuView, SystemView
 from asm.config import DEFAULT_CONFIG
 from asm.domain.states import SystemState
 from asm.infrastructure.display.luma_oled import LumaOledDisplay, _fit, _waveform_prefix
@@ -86,3 +86,34 @@ def test_oled_adapter_renders_branded_startup_frame() -> None:
     assert text_values == ["BLTeech", "ASM v3", "Iniciando..."]
     assert any(name == "line" for name, _payload in drawing.operations)
     assert _waveform_prefix(1.0)[-1] == (121, 29)
+
+
+def test_oled_adapter_renders_scrolling_menu_and_selected_marker() -> None:
+    device = FakeDevice()
+    drawing = FakeDrawingSurface()
+
+    @contextmanager
+    def canvas_factory(_device: object) -> Iterator[FakeDrawingSurface]:
+        yield drawing
+
+    display = LumaOledDisplay(
+        device=device,
+        canvas_factory=canvas_factory,
+        branding=DEFAULT_CONFIG.branding,
+    )
+    display.show_menu(
+        MenuView(
+            title="Menu principal",
+            items=("Recepcion", "Audio", "Diagnostico", "Sistema", "Informacion"),
+            selected_index=4,
+        )
+    )
+
+    text_values = [payload[1] for name, payload in drawing.operations if name == "text"]
+    assert text_values == [
+        "Menu principal",
+        " Audio",
+        " Diagnostico",
+        " Sistema",
+        ">Informacion",
+    ]
