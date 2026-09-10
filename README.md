@@ -146,7 +146,8 @@ Debe existir un único diseño consciente de pull-ups. Los módulos I²C pueden 
 | AC OK / AC FAIL | GPIO5 | 29 |
 | Estado de carga / batería llena | GPIO6 | 31 |
 | Batería desconectada o invertida | GPIO13 | 33 |
-| Batería baja / normal | GPIO19 | 35 |
+| Batería baja / normal | GPIO26 | 37 |
+| Descarga / operación desde batería | GPIO12 | 32 |
 
 Estas señales pasan por optoacopladores PC817. El software deberá separar:
 
@@ -205,11 +206,12 @@ Los pines 7 y 8 son una entrada de control y no una salida de estado.
 - [VALIDADO] Ruta básica entrada → PC817 → GPIO en pruebas con jumper.
 - [PENDIENTE] Prueba con una LAD-120A real.
 - [PENDIENTE] Medición de niveles y tiempos de transición reales.
-- [PENDIENTE] Confirmación de polaridad post-opto de cada GPIO.
-- [PENDIENTE] Definir el GPIO de `Discharge` si la quinta entrada PC817 está efectivamente ruteada.
-- [PENDIENTE] Verificar la correspondencia exacta entre CN2-5 y GPIO6.
+- [DECIDIDO] En Carrier v3.1 Rev A la salida PC817 activa lleva el GPIO a LOW.
+- [DECIDIDO] `Discharge` corresponde a GPIO12 y batería baja a GPIO26.
+- [PENDIENTE] Validar condiciones y tiempos con una LAD-120A real.
 
-El archivo de inventario actual asigna cuatro señales Mean Well a GPIO, mientras que la arquitectura de carrier contempla cinco estados. Esta diferencia no debe resolverse inventando un GPIO; debe verificarse en el esquemático y la PCB.
+El mapa de cinco señales de Carrier v3.1 Rev A reemplaza el inventario
+preliminar de cuatro GPIO.
 
 ## Lógica de botones
 
@@ -379,7 +381,6 @@ La documentación debe distinguir:
 
 - Reemplazar U7 dañado por calor.
 - Probar con LAD-120A real.
-- Resolver el mapeo de la quinta señal Mean Well (`Discharge`).
 - Diseñar ASM-RX-SA818S v0.1.
 - Diseñar ASM-RX-DRA818V v0.1.
 - Comparar receptores.

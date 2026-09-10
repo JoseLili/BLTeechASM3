@@ -89,11 +89,14 @@ exponer bytes ni polaridad a la aplicación.
 | AC OK / AC FAIL | GPIO5 | 29 |
 | Carga / batería llena | GPIO6 | 31 |
 | Batería desconectada o invertida | GPIO13 | 33 |
-| Batería baja / normal | GPIO19 | 35 |
+| Batería baja / normal | GPIO26 | 37 |
+| Descarga / operación UPS | GPIO12 | 32 |
 
-- `PENDIENTE`: GPIO de CN2-6 `Discharge`; no debe inventarse.
-- `PENDIENTE`: polaridades finales post-opto.
-- `PENDIENTE`: validación con LAD-120A real y correspondencia exacta CN2-5↔GPIO6.
+- `DECIDIDO`: el mapa anterior corresponde a la PCB Carrier v3.1 Rev A y
+  reemplaza el inventario preliminar que usaba GPIO19 y omitía `Discharge`.
+- `DECIDIDO`: opto excitado conduce la salida a LOW; la inversión queda dentro
+  de `GpioPowerMonitor`.
+- `PENDIENTE`: validar condiciones, combinaciones y tiempos con una LAD-120A real.
 
 ### UART del receptor SA818S-V
 
@@ -122,7 +125,7 @@ GPIO0/pin 27 y GPIO1/pin 28 se reservan al ecosistema HAT/EEPROM. GPIO4, 18, 10,
 | `DisplayPort` | presentar vistas, no primitivas de bus | mostrar estado/menú/falla; `PENDIENTE` límites y refresco |
 | `ButtonInputPort` | emitir gestos filtrados | eventos cortos/largos/combinados; `PENDIENTE` umbrales |
 | `LedOutputPort` | expresar patrón semántico | aplicar indicación; `PENDIENTE` catálogo y precedencia |
-| `PowerMonitorPort` | entregar `PowerStatus` | observar estado/calidad; `PENDIENTE` debounce y desconocidos |
+| `PowerMonitorPort` | entregar `PowerStatus` | snapshot semántico implementado; `PENDIENTE` debounce y reglas de severidad |
 | `ClockPort` | tiempo monotónico y civil | ahora/monotónico; `PENDIENTE` sincronización RTC |
 | `ConfigurationRepository` | carga y escritura atómica | obtener/guardar/versionar; `PENDIENTE` recuperación |
 | `EventLogRepository` | persistir auditoría y diagnóstico | append/consulta/exportación; `PENDIENTE` retención/integridad |

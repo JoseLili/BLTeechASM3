@@ -54,6 +54,10 @@ Primera evidencia registrada:
   de guardar; cancelar o fallar la escritura restaura el canal confirmado.
 - `VALIDADO`: el SA818S-V cambió físicamente de C7 a C6, leyó de vuelta
   162.5250 MHz y después restauró C7/162.5500 MHz correctamente.
+- `VALIDADO` mediante dobles: el monitor de energía exige las cinco señales,
+  traduce activo-bajo una sola vez, conserva `UNKNOWN` y libera cada GPIO.
+- `OBSERVADO`: sin salidas LAD-120A excitadas, GPIO5/13/26/6/12 permanecieron
+  HIGH y el diagnóstico reportó las cinco señales como `CLEAR`.
 
 ### LAD-120A real
 

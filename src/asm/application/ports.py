@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Protocol
 
 from asm.domain.models import AuditRecord
+from asm.domain.power import PowerStatus
 from asm.domain.receiver import ReceiverChannel, ReceiverConfigurationResult, ReceiverProfile
 from asm.domain.states import SystemState
 
@@ -73,3 +74,9 @@ class ReceiverChannelRepository(Protocol):
     def load(self) -> ReceiverChannel | None: ...
 
     def save(self, channel: ReceiverChannel) -> None: ...
+
+
+class PowerMonitorPort(Protocol):
+    """Read semantic Mean Well states without exposing optos or GPIO levels."""
+
+    def read(self) -> PowerStatus: ...

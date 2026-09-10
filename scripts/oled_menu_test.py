@@ -16,11 +16,13 @@ from asm.application.channel_editor import (
 from asm.application.menu_controller import DEFAULT_MENU, MenuController
 from asm.application.menu_input import MenuCommand
 from asm.application.ports import SystemView
+from asm.application.power_presenter import power_status_view
 from asm.application.receiver_service import ReceiverError, ReceiverService
 from asm.config import DEFAULT_CONFIG
 from asm.domain.receiver import ReceiverProfile
 from asm.domain.states import SystemState
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
+from asm.infrastructure.gpio.power_monitor import GpioPowerMonitor
 from asm.infrastructure.i2c.pcf8574_menu_buttons import Pcf8574MenuButtons
 from asm.infrastructure.receiver.sa818_serial import Sa818SerialReceiver
 from asm.infrastructure.storage.channel_config import JsonReceiverChannelRepository
@@ -63,6 +65,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         receiver_adapter.close()
         display.clear()
         print(f"FAIL startup receiver configuration: {error}")
+        return 2
+
+    try:
+        power_monitor = GpioPowerMonitor.open()
+    except RuntimeError as error:
+        receiver_adapter.close()
+        display.clear()
+        print(f"FAIL power monitor: {error}")
         return 2
 
     menu = MenuController(display=display, root=DEFAULT_MENU)
@@ -111,6 +121,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"ACTION {action.kind} target={action.target or '-'}")
             if action.target == "receiver.channel":
                 channel_editor.open()
+            elif action.target == "diagnostics.power":
+                display.show_menu(power_status_view(power_monitor.read()))
+                print("POWER diagnostic snapshot shown")
         if not menu.is_open:
             display.show(idle)
             print("MENU closed; press Enter to reopen")
@@ -135,6 +148,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 130
     finally:
         panel.close()
+        power_monitor.close()
         receiver_adapter.close()
         display.clear()
 

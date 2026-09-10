@@ -17,15 +17,36 @@
 ## Estado de evidencia
 
 - `VALIDADO`: orientación del header, cambio de flanco al puentear contra CN2-4 y ruta básica PC817→GPIO con jumper.
-- `PENDIENTE`: prueba con LAD-120A real, niveles, tiempos y polaridades post-opto.
-- `PENDIENTE`: correspondencia exacta CN2-5↔GPIO6.
-- `PENDIENTE`: ruta/GPIO de CN2-6 `Discharge`.
+- `DECIDIDO` por el mapa final Carrier v3.1 Rev A: CN2-1/GPIO5,
+  CN2-2/GPIO13, CN2-3/GPIO26, CN2-5/GPIO6 y CN2-6/GPIO12.
+- `DECIDIDO`: PC817 excitado produce LOW en la entrada Raspberry Pi.
+- `PENDIENTE`: prueba con LAD-120A real, niveles, tiempos y tabla de estados.
 
-El inventario tiene cuatro GPIO, mientras la carrier contempla cinco estados. Esta discrepancia se resuelve únicamente contra esquemático, PCB y medición física.
+El mapa preliminar de cuatro GPIO queda supersedido. Software no debe volver a
+usar GPIO19 para batería baja ni tratar `Discharge` como señal ausente.
 
 ## Interpretación de software
 
 El adaptador conserva por separado lectura cruda, traducción eléctrica validada, calidad/conocimiento del dato y `PowerStatus`. Mientras no exista validación, los estados admiten `UNKNOWN`; no se infiere normalidad de una señal ausente.
+
+`IMPLEMENTADO`: `GpioPowerMonitor` abre las cinco entradas con pull-up, traduce
+LOW a `ASSERTED`, HIGH a `CLEAR` y cualquier lectura no binaria a `UNKNOWN`.
+Entrega snapshots inmutables mediante `PowerMonitorPort`; todavía no asigna
+severidad, alarmas ni combinaciones físicamente imposibles.
+
+`IMPLEMENTADO`: `Diagnóstico → Energía` presenta en la OLED las cinco señales
+semánticas. `SI` significa que la salida correspondiente está afirmada; no
+significa por sí solo que el sistema completo esté sano o en falla.
+
+`OBSERVADO` en la carrier energizada sin entradas LAD-120A excitadas: GPIO5,
+GPIO13, GPIO26, GPIO6 y GPIO12 quedaron HIGH y las cinco señales se reportaron
+`CLEAR`.
+
+Diagnóstico de banco:
+
+```bash
+PYTHONPATH=src /usr/bin/python3 scripts/power_input_test.py --duration 30
+```
 
 ## Plan mínimo de validación física
 
@@ -42,6 +63,7 @@ Los procedimientos eléctricos detallados deben ser revisados por personal compe
 - Umbrales y retardos que evitan falsos cambios.
 - Combinaciones de estados posibles y severidad funcional.
 - Autonomía objetivo, Forced Start y estrategia segura de apagado.
+- Ventana de debounce y cantidad de muestras estables antes de publicar cambios.
 
 ## Relacionados
 
