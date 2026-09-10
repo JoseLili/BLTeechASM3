@@ -58,6 +58,10 @@ Primera evidencia registrada:
   traduce activo-bajo una sola vez, conserva `UNKNOWN` y libera cada GPIO.
 - `OBSERVADO`: sin salidas LAD-120A excitadas, GPIO5/13/26/6/12 permanecieron
   HIGH y el diagnóstico reportó las cinco señales como `CLEAR`.
+- `VALIDADO` mediante dobles: cada estado de indicadores escribe los cuatro
+  GPIO, elimina salidas residuales y el cierre garantiza todo apagado.
+- `EJECUTADO`: la secuencia HIL activó individualmente GPIO23, GPIO24, GPIO25 y
+  GPIO4 y finalizó con los cuatro en LOW; confirmación visual aún pendiente.
 
 ### LAD-120A real
 

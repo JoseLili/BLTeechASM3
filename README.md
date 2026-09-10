@@ -67,7 +67,7 @@ Placa de dos capas conectada a la Raspberry Pi mediante header de 40 pines. Inte
 - Entrada de energía desde Mean Well LAD-120A.
 - Conversión a 5 V para Raspberry Pi mediante Mini560.
 - Tres botones de panel.
-- Tres LEDs indicadores.
+- Cuatro LEDs indicadores.
 - Bus I²C para OLED, RTC y EEPROM.
 - Entradas aisladas mediante PC817 para estados de Mean Well.
 - Borneras y conexiones robustas hacia el gabinete.
@@ -118,6 +118,7 @@ Los LEDs se consideran activos en alto mediante resistencia serie de 220–330 �
 | Verde | GPIO23 | 16 | Espera / sistema operativo |
 | Ámbar | GPIO24 | 18 | Simulacro / evacuación / advisory |
 | Rojo | GPIO25 | 22 | Alerta sísmica / falla / paro |
+| Energía | GPIO4 | 7 | Estado de alimentación |
 
 La semántica definitiva de cada LED debe congelarse antes de producción.
 

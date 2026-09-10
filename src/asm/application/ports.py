@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
 from asm.domain.power import PowerStatus
 from asm.domain.receiver import ReceiverChannel, ReceiverConfigurationResult, ReceiverProfile
@@ -80,3 +81,9 @@ class PowerMonitorPort(Protocol):
     """Read semantic Mean Well states without exposing optos or GPIO levels."""
 
     def read(self) -> PowerStatus: ...
+
+
+class IndicatorPort(Protocol):
+    """Apply a complete semantic state to every panel indicator."""
+
+    def apply(self, state: IndicatorState) -> None: ...

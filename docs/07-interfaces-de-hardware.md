@@ -36,8 +36,15 @@ Primera validación física:
 | Verde | GPIO23 | 16 | activo alto mediante resistencia serie |
 | Ámbar | GPIO24 | 18 | activo alto mediante resistencia serie |
 | Rojo | GPIO25 | 22 | activo alto mediante resistencia serie |
+| Energía | GPIO4 | 7 | activo alto mediante R39 330 Ω |
 
-`PENDIENTE`: congelar semántica definitiva, patrones y precedencia entre evento y falla.
+`IMPLEMENTADO`: `GpioIndicatorPanel` encapsula el mapa activo-alto, aplica
+siempre los cuatro valores como un estado completo y apaga todo antes de liberar
+los GPIO. La herramienta HIL recorre AVISO, PRECAUCIÓN, ALERTA y ENERGÍA en
+modo one-hot.
+
+`PENDIENTE`: confirmar visualmente cada LED y congelar patrones y precedencia
+entre evento y falla.
 
 ### I²C
 
@@ -124,7 +131,7 @@ GPIO0/pin 27 y GPIO1/pin 28 se reservan al ecosistema HAT/EEPROM. GPIO4, 18, 10,
 | `AudioInputPort` | entregar señal/muestras demoduladas | iniciar/detener/leer; `PENDIENTE` formato, tasa y buffering |
 | `DisplayPort` | presentar vistas, no primitivas de bus | mostrar estado/menú/falla; `PENDIENTE` límites y refresco |
 | `ButtonInputPort` | emitir gestos filtrados | eventos cortos/largos/combinados; `PENDIENTE` umbrales |
-| `LedOutputPort` | expresar patrón semántico | aplicar indicación; `PENDIENTE` catálogo y precedencia |
+| `IndicatorPort` | aplicar los cuatro indicadores como estado completo | adaptador activo-alto implementado; política pendiente |
 | `PowerMonitorPort` | entregar `PowerStatus` | snapshot semántico implementado; `PENDIENTE` debounce y reglas de severidad |
 | `ClockPort` | tiempo monotónico y civil | ahora/monotónico; `PENDIENTE` sincronización RTC |
 | `ConfigurationRepository` | carga y escritura atómica | obtener/guardar/versionar; `PENDIENTE` recuperación |
