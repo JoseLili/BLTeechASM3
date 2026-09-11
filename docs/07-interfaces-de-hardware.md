@@ -119,6 +119,29 @@ TXD0/RXD0. El SA818S-V respondió a los cinco comandos del perfil GOLD.
 `IMPLEMENTADO`: el adaptador RX-only configura C1–C7, volumen, squelch y
 filtros, y exige lectura de vuelta exacta. No existe API software de PTT.
 
+### Audio WM8960
+
+| Función | Contrato validado |
+|---|---|
+| Tarjeta ALSA | `wm8960soundcard` |
+| PCM dúplex | `hw:wm8960soundcard,0` |
+| Captura física | `S32_LE`, 48000 Hz, 2 canales |
+| Entrada de radio | canal derecho, índice 1, RINPUT1 |
+| Entrada del decoder GOLD | `S16_LE`, 22050 Hz, mono |
+
+`IMPLEMENTADO`: `AlsaAudioHealth` consulta, sin abrir streams, la precarga
+`wm8960-audio-board-preload.service` y la presencia exacta de captura/salida.
+`AlsaCaptureProbe` realiza únicamente capturas WAV finitas y detecta el caso
+anómalo de muestras exactamente en cero; no inventa todavía un umbral de señal
+útil. `AlsaAudioPlayer` posee como máximo una reproducción WAV, permite Paro
+explícito y no reemplaza audio en curso de forma implícita.
+
+`DECIDIDO`: captura y reproducción son recursos separados. Ningún adaptador
+modifica registros I²C o controles de mezclador mientras exista un stream I²S,
+porque la carrier ha presentado errores EIO en esa condición. La rama de
+monitor podrá aplicar procesamiento independiente; la rama del decoder conserva
+el perfil GOLD sin ganancia, normalización, compresor ni filtros digitales.
+
 ### Reservados y libres
 
 GPIO0/pin 27 y GPIO1/pin 28 se reservan al ecosistema HAT/EEPROM. GPIO4, 18, 10, 9, 11, 8, 7, 12, 16, 20, 21 y 26 son `PENDIENTE` de validación contra audio, UART, SPI y ASM-RX antes de asignarlos.
@@ -128,7 +151,9 @@ GPIO0/pin 27 y GPIO1/pin 28 se reservan al ecosistema HAT/EEPROM. GPIO4, 18, 10,
 | Puerto | Responsabilidad semántica | Operaciones sugeridas / preguntas |
 |---|---|---|
 | `ReceiverPort` | configurar y observar receptor sin conocer módulo | aplicar perfil y devolver estado verificado; implementado para SA818S-V |
-| `AudioInputPort` | entregar señal/muestras demoduladas | iniciar/detener/leer; `PENDIENTE` formato, tasa y buffering |
+| `AudioHealthPort` | informar disponibilidad de precarga/captura/salida | snapshot de solo lectura implementado para WM8960 |
+| `AudioPlaybackPort` | reproducir/detener un recurso local | WAV único e interrumpible implementado; selección de recursos pendiente |
+| `AudioInputPort` | entregar muestras al decoder SAME | perfil GOLD decidido; streaming, buffering y backpressure pendientes |
 | `DisplayPort` | presentar vistas, no primitivas de bus | mostrar estado/menú/falla; `PENDIENTE` límites y refresco |
 | `ButtonInputPort` | emitir gestos filtrados | eventos cortos/largos/combinados; `PENDIENTE` umbrales |
 | `IndicatorPort` | aplicar los cuatro indicadores como estado completo | adaptador activo-alto implementado; política pendiente |
@@ -142,4 +167,4 @@ El dominio no conoce SA818S, DRA818V, `gpiozero`, `pigpio`, `smbus` ni `luma.ole
 
 ## Relacionados
 
-[Carrier](02-carrier-board.md), [ASM-RX](03-subsistema-asm-rx.md), [Mean Well](09-energia-meanwell.md) y [ADR-006](adr/ADR-006-separacion-dominio-hardware.md).
+[Carrier](02-carrier-board.md), [ASM-RX](03-subsistema-asm-rx.md), [Mean Well](09-energia-meanwell.md), [ADR-006](adr/ADR-006-separacion-dominio-hardware.md) y [ADR-016](adr/ADR-016-perfil-audio-wm8960-y-gold-same.md).

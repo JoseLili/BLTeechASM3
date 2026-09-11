@@ -7,6 +7,7 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 
+from asm.application.audio_presenter import audio_status_view
 from asm.application.channel_editor import (
     ChannelEditorOutcome,
     ChannelRollbackError,
@@ -23,6 +24,7 @@ from asm.application.receiver_service import ReceiverError, ReceiverService
 from asm.config import DEFAULT_CONFIG
 from asm.domain.receiver import ReceiverProfile
 from asm.domain.states import SystemState
+from asm.infrastructure.audio.alsa_health import AlsaAudioHealth
 from asm.infrastructure.console import SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
 from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
@@ -107,6 +109,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         detail="ENTER abre menu",
     )
     indicators.apply(indicator_state_for(SystemState.IDLE))
+    audio_health = AlsaAudioHealth.open(DEFAULT_CONFIG.audio)
     power_supervisor = PowerSupervisor(
         monitor=power_monitor,
         clock=SystemClock(),
@@ -152,6 +155,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             elif action.target == "diagnostics.power":
                 display.show_menu(power_status_view(power_monitor.read()))
                 print("POWER diagnostic snapshot shown")
+            elif action.target == "diagnostics.audio":
+                display.show_menu(audio_status_view(audio_health.read()))
+                print("AUDIO diagnostic snapshot shown")
         if not menu.is_open:
             display.show(idle)
             print("MENU closed; press Enter to reopen")

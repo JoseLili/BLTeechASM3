@@ -23,6 +23,14 @@ def test_factory_defaults_describe_current_brand_and_animation() -> None:
     assert DEFAULT_CONFIG.buttons.evacuacion.mode is ActivationMode.IMMEDIATE
     assert DEFAULT_CONFIG.menu_buttons.debounce_seconds == 0.05
     assert DEFAULT_CONFIG.power_monitoring.debounce_seconds == 0.25
+    assert DEFAULT_CONFIG.audio.card_name == "wm8960soundcard"
+    assert DEFAULT_CONFIG.audio.pcm_device == "hw:wm8960soundcard,0"
+    assert DEFAULT_CONFIG.audio.capture_spec.sample_rate_hz == 48_000
+    assert DEFAULT_CONFIG.audio.capture_spec.channels == 2
+    assert DEFAULT_CONFIG.audio.decoder_spec.sample_format.value == "S16_LE"
+    assert DEFAULT_CONFIG.audio.decoder_spec.sample_rate_hz == 22_050
+    assert DEFAULT_CONFIG.audio.decoder_spec.channels == 1
+    assert DEFAULT_CONFIG.audio.radio_capture_channel == 1
     assert DEFAULT_CONFIG.receiver.channel.value == "C7"
     assert DEFAULT_CONFIG.receiver.serial_device == "/dev/serial0"
     assert DEFAULT_CONFIG.receiver.command_timeout_seconds == 2.0

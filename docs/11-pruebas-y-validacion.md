@@ -88,6 +88,23 @@ Primera evidencia registrada:
 - `EJECUTADO`: la demo integrada llegó a IDLE, abrió las cinco entradas de
   energía y creó la auditoría persistente; no se pulsaron botones durante esa
   ventana, por lo que la ruta física botón→estado se debe repetir.
+- `VALIDADO` el 2026-09-11: ALSA enumeró `wm8960soundcard` para captura y
+  reproducción, y la precarga del codec quedó `active`.
+- `VALIDADO` el 2026-09-11: una captura HIL limitada a dos segundos produjo
+  96000 cuadros `48 kHz/S32_LE/estéreo`; en el canal derecho se midió pico
+  normalizado `0.035966873` y RMS `0.009449328`, descartando la falla de ceros
+  exactos en esa ejecución.
+- `EJECUTADO` el 2026-09-11: una reproducción WAV silenciosa de un segundo
+  finalizó correctamente en el PCM WM8960. Esto valida apertura y control del
+  stream, no la salida acústica ni el cableado BTL del altavoz.
+- `EJECUTADO` el 2026-09-11: el diagnóstico de audio se dibujó por tres segundos
+  en la OLED y se limpió sin error; la confirmación visual humana de los cuatro
+  rótulos sigue pendiente.
+- `VALIDADO` por el usuario el 2026-09-11: una RWT real capturada desde
+  `hw:wm8960soundcard,0` y convertida del canal derecho a GOLD fue decodificada
+  por `multimon-ng 1.3.1` como
+  `ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-`, seguida por tres `NNNN`.
+  Es una prueba funcional extremo a extremo, no una medición estadística de BER.
 
 Prueba HIL de la política completa:
 
@@ -105,6 +122,15 @@ Secuencia visual de prioridades completa:
 
 ```bash
 PYTHONPATH=src /usr/bin/python3 scripts/priority_oled_test.py --seconds 1.5
+```
+
+Diagnóstico HIL de audio:
+
+```bash
+PYTHONPATH=src /usr/bin/python3 scripts/audio_health_test.py
+PYTHONPATH=src /usr/bin/python3 scripts/audio_capture_test.py --seconds 2
+PYTHONPATH=src /usr/bin/python3 scripts/audio_playback_silence_test.py --seconds 1
+PYTHONPATH=src /usr/bin/python3 scripts/audio_health_oled_test.py --seconds 3
 ```
 
 ### LAD-120A real

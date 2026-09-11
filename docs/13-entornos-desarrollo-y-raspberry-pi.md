@@ -12,7 +12,8 @@
 
 ### Común
 
-El paquete `asm-blteech` no tiene dependencias de ejecución todavía. Modelos, reglas, fakes y simulación deben permanecer en este perfil.
+El paquete `asm-blteech` no añade dependencias Python de ejecución todavía.
+Modelos, reglas, fakes y simulación deben permanecer en este perfil.
 
 ### Desarrollo
 
@@ -39,7 +40,18 @@ uname -m
 python3 scripts/environment_report.py
 ```
 
-En la Pi se crea `.venv` y se instala el mismo paquete. Las dependencias exclusivas de hardware se definirán en un extra separado y mediante ADR; no formarán parte del núcleo.
+En la Pi se crea `.venv` y se instala el mismo paquete. Las dependencias
+exclusivas de hardware se definirán en un extra separado y mediante ADR; no
+formarán parte del núcleo. Los adaptadores de audio actuales usan la biblioteca
+estándar de Python y herramientas del sistema operativo:
+
+- `/usr/bin/arecord` y `/usr/bin/aplay` para ALSA;
+- `wm8960-audio-board-preload.service` activo antes de abrir streams;
+- `sox` para la conversión GOLD reproducible en pruebas;
+- `multimon-ng` para la demodulación SAME/EAS de laboratorio.
+
+`sox` y `multimon-ng` no son dependencias del dominio ni de los diagnósticos
+básicos; serán dependencias del futuro servicio decoder.
 
 ## Flujo de trabajo
 
@@ -60,6 +72,9 @@ No deben versionarse `.venv`, caches, builds ni reportes locales. Las versiones 
 - `VALIDADO`: Raspberry Pi 4 Model B Rev 1.5.
 - `VALIDADO`: Debian GNU/Linux 13 (Trixie), `aarch64`, Python 3.13.5.
 - `VALIDADO`: existen `/dev/i2c-1`, `/dev/i2c-20` y `/dev/i2c-21`.
+- `VALIDADO`: ALSA expone `wm8960soundcard` dispositivo 0 para captura y salida;
+  una captura real desde RINPUT1 derecho y una reproducción silenciosa
+  finalizaron correctamente.
 - `VALIDADO`: el RTC en I²C-1 dirección `0x68` está expuesto como `/dev/rtc0` mediante el driver `rtc-ds1307`.
 - `VALIDADO`: la partición raíz tiene 22 GB disponibles durante el inventario inicial.
 - `PENDIENTE`: definir política de retención y umbrales de almacenamiento.

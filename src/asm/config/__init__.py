@@ -3,6 +3,7 @@
 from asm.config.defaults import DEFAULT_CONFIG
 from asm.config.models import (
     ActivationMode,
+    AudioConfig,
     BrandingConfig,
     ButtonInputConfig,
     ConfigurableButtonAction,
@@ -16,6 +17,7 @@ from asm.config.models import (
 __all__ = [
     "DEFAULT_CONFIG",
     "ActivationMode",
+    "AudioConfig",
     "BrandingConfig",
     "ButtonInputConfig",
     "ConfigurableButtonAction",

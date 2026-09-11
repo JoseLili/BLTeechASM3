@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from asm.config.models import (
     ActivationMode,
+    AudioConfig,
     BrandingConfig,
     ButtonInputConfig,
     ConfigurableButtonAction,
@@ -36,6 +37,7 @@ DEFAULT_CONFIG = SystemConfig(
     ),
     menu_buttons=MenuButtonInputConfig(debounce_seconds=0.05),
     power_monitoring=PowerMonitoringConfig(debounce_seconds=0.25),
+    audio=AudioConfig.wm8960(),
     receiver=ReceiverConfig(
         channel=ReceiverChannel.C7,
         serial_device="/dev/serial0",

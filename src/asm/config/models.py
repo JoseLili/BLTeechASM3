@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from asm.domain.audio import AudioStreamSpec, PcmSampleFormat
 from asm.domain.receiver import ReceiverChannel
 
 
@@ -100,6 +101,38 @@ class PowerMonitoringConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class AudioConfig:
+    """Validated ALSA identity and PCM contract for Carrier v3.1 Rev A."""
+
+    card_name: str
+    pcm_device: str
+    preload_service: str
+    capture_spec: AudioStreamSpec
+    decoder_spec: AudioStreamSpec
+    radio_capture_channel: int
+
+    def __post_init__(self) -> None:
+        _required_text(self.card_name, "card_name")
+        _required_text(self.pcm_device, "pcm_device")
+        _required_text(self.preload_service, "preload_service")
+        if self.decoder_spec.channels != 1:
+            raise ValueError("decoder_spec must be mono")
+        if not 0 <= self.radio_capture_channel < self.capture_spec.channels:
+            raise ValueError("radio_capture_channel must reference a capture channel")
+
+    @classmethod
+    def wm8960(cls) -> AudioConfig:
+        return cls(
+            card_name="wm8960soundcard",
+            pcm_device="hw:wm8960soundcard,0",
+            preload_service="wm8960-audio-board-preload.service",
+            capture_spec=AudioStreamSpec(PcmSampleFormat.S32_LE, 48_000, 2),
+            decoder_spec=AudioStreamSpec(PcmSampleFormat.S16_LE, 22_050, 1),
+            radio_capture_channel=1,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class ReceiverConfig:
     """Startup channel and Linux UART timing for the installed receiver."""
 
@@ -125,4 +158,5 @@ class SystemConfig:
     buttons: ButtonInputConfig
     menu_buttons: MenuButtonInputConfig
     power_monitoring: PowerMonitoringConfig
+    audio: AudioConfig
     receiver: ReceiverConfig

@@ -12,6 +12,12 @@ SystemConfig
 ├── DisplayConfig
 ├── ButtonInputConfig
 ├── MenuButtonInputConfig
+├── PowerMonitoringConfig
+├── AudioConfig
+│   ├── card_name / pcm_device / preload_service
+│   ├── capture_spec: S32_LE, 48000 Hz, 2 canales
+│   ├── radio_capture_channel: 1 (derecho)
+│   └── decoder_spec: S16_LE, 22050 Hz, mono
 └── ReceiverConfig
     ├── channel
     ├── serial_device
@@ -35,7 +41,11 @@ valores de fábrica → configuración del equipo → configuración del sitio
 
 Una configuración externa inválida deberá impedir su aplicación, conservar la última configuración válida y generar diagnóstico. No existe todavía un loader YAML ni se ha decidido su ubicación definitiva; `/etc/asm-blteech/config.yaml` permanece `PROPUESTO`.
 
-`PENDIENTE`: agregar secciones tipadas para textos por estado y recursos de audio cuando existan consumidores implementados. No se crearán campos sin uso solamente para anticipar código futuro.
+`IMPLEMENTADO`: la identidad ALSA y los dos perfiles PCM están tipados e
+inmutables en `AudioConfig`; salud, captura diagnóstica y reproducción ya los
+consumen. `PENDIENTE`: agregar catálogo de textos por estado y rutas de recursos
+de audio cuando existan esos consumidores. No se crearán campos sin uso
+solamente para anticipar código futuro.
 
 ## Política configurable de botones
 

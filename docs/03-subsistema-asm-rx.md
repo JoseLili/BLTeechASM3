@@ -17,6 +17,14 @@ ASM-RX reemplaza al receptor comercial cerrado y debe ser propio, reproducible, 
 `VALIDADO`: el 10 de septiembre de 2026 el módulo aceptó la secuencia GOLD y
 devolvió exactamente el grupo aplicado mediante `AT+DMOREADGROUP`.
 
+`VALIDADO`: el 11 de septiembre de 2026 una transmisión RWT recorrió la cadena
+real SA818S-V → `AF_OUT` → entrada derecha/RINPUT1 del WM8960. La captura
+`48 kHz/S32_LE/estéreo`, convertida desde el canal derecho a
+`22.05 kHz/S16_LE/mono`, fue reconocida por `multimon-ng` como
+`ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-` y tres terminadores `NNNN`.
+Esta evidencia confirma la ruta funcional; todavía no establece sensibilidad,
+SNR, BER ni márgenes eléctricos de producción.
+
 ## Variantes futuras
 
 - `IMPLEMENTADO` en la revisión actual: NiceRF SA818S-V.
@@ -61,10 +69,11 @@ transmisión. La sintaxis y las respuestas se contrastaron con el
 
 ## Preguntas abiertas
 
-- ¿Qué niveles, impedancia, ancho de banda y ruta física requiere `AF_OUT` para escucha y AFSK?
+- ¿Qué límites cuantitativos de nivel, impedancia, ancho de banda y ruido debe
+  cumplir `AF_OUT` para producción, aunque la ruta actual ya decodifica RWT?
 - ¿Cómo se define y detecta una falla de recepción?
 - ¿Qué interfaz usará una eventual daughterboard posterior a Carrier v3.1 Rev A?
 
 ## Relacionados
 
-[ADR-002](adr/ADR-002-reemplazo-de-receptor-cerrado.md), [ADR-011](adr/ADR-011-sa818-uart-rx-only.md) y [pruebas](11-pruebas-y-validacion.md).
+[ADR-002](adr/ADR-002-reemplazo-de-receptor-cerrado.md), [ADR-011](adr/ADR-011-sa818-uart-rx-only.md), [ADR-016](adr/ADR-016-perfil-audio-wm8960-y-gold-same.md) y [pruebas](11-pruebas-y-validacion.md).

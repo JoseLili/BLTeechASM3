@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Protocol
 
+from asm.domain.audio import AudioDeviceStatus
 from asm.domain.diagnostics import DiagnosticRecord, DiagnosticSeverity
 from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
@@ -111,6 +113,23 @@ class PowerMonitorPort(Protocol):
     """Read semantic Mean Well states without exposing optos or GPIO levels."""
 
     def read(self) -> PowerStatus: ...
+
+
+class AudioHealthPort(Protocol):
+    """Read ALSA and preload readiness without opening an audio stream."""
+
+    def read(self) -> AudioDeviceStatus: ...
+
+
+class AudioPlaybackPort(Protocol):
+    """Start and interrupt one audio asset without exposing ALSA."""
+
+    @property
+    def is_playing(self) -> bool: ...
+
+    def start(self, asset: Path) -> None: ...
+
+    def stop(self) -> None: ...
 
 
 class IndicatorPort(Protocol):

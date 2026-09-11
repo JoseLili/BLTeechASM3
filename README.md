@@ -377,6 +377,10 @@ La documentación debe distinguir:
 - Cuatro de cinco optoacopladores respondieron en pruebas.
 - Pinout físico de CN2 identificado.
 - Ruta de señales opto–GPIO probada con jumper.
+- SA818S-V configurado por UART y ruta real SA818S-V → WM8960 → GOLD →
+  `multimon-ng` decodificando una RWT.
+- WM8960 enumerado para captura/salida, con HAL diagnóstica y reproducción WAV
+  interrumpible.
 
 ### Pendiente
 
@@ -385,7 +389,8 @@ La documentación debe distinguir:
 - Diseñar ASM-RX-SA818S v0.1.
 - Diseñar ASM-RX-DRA818V v0.1.
 - Comparar receptores.
-- Definir interfaz de audio final.
+- Implementar el stream continuo y supervisor del decoder SAME sobre el perfil
+  de audio GOLD ya congelado.
 - Definir enlace final de control con ASM-RX.
 - Congelar semántica de LEDs.
 - Implementar software greenfield.
