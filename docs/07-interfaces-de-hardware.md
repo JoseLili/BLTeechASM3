@@ -43,8 +43,14 @@ siempre los cuatro valores como un estado completo y apaga todo antes de liberar
 los GPIO. La herramienta HIL recorre AVISO, PRECAUCIÓN, ALERTA y ENERGÍA en
 modo one-hot.
 
-`PENDIENTE`: confirmar visualmente cada LED y congelar patrones y precedencia
-entre evento y falla.
+`IMPLEMENTADO`: `SameIndicatorSupervisor` produce parpadeo lento no bloqueante,
+inicialmente un segundo encendido y uno apagado. RWT usa AVISO/amarillo durante
+`TTTT`; EQW usa ALERTA/rojo y lo preempta mientras esté vigente. El LED de
+ENERGÍA permanece estable. La cadencia queda explícita para poder ajustarla sin
+cambiar el parser ni la vigencia.
+
+`PENDIENTE`: confirmar visualmente cada rótulo y cerrar la composición entre
+avisos SAME, simulacro/evacuación y fallas concurrentes.
 
 ### I²C
 

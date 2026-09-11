@@ -59,9 +59,17 @@ alguna autoridad puede detener EQW y cómo se reconoce `STOPPED` para volver a
 
 ## Plazos y recuperación
 
-`DECIDIDO`: no existirá un timeout global que fuerce cualquier estado a `IDLE`. Cada estado activo tendrá una condición de terminación o plazo explícito y probado. EQW no se cancelará mediante un watchdog genérico. La recuperación tras reinicio deberá usar evidencia persistente y una política específica antes de reanudar o abandonar un evento.
+`DECIDIDO`: no existirá un timeout global que fuerce cualquier estado a `IDLE`.
+Cada estado activo tendrá una condición de terminación o plazo explícito y
+probado. Para RWT y EQW, `TTTT` inicia en la recepción aceptada y mantiene un
+aviso visual independiente del fin de trama `NNNN`: RWT/`+0300` conserva AVISO
+durante tres horas y EQW/`+0001` conserva ALERTA durante un minuto. EQW no se
+cancelará mediante un watchdog genérico. La recuperación tras reinicio deberá
+usar evidencia persistente y una política específica antes de reanudar o
+abandonar un evento.
 
-`PENDIENTE`: definir plazos, finalización de audio, reconocimiento de Paro y recuperación de cada estado.
+`PENDIENTE`: integrar los plazos SAME con la transición operativa, finalización
+de audio, reconocimiento de Paro y recuperación persistente tras reinicio.
 
 ## Relacionados
 

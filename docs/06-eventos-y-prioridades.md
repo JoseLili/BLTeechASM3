@@ -34,12 +34,19 @@ interrumpe `TECH_MODE`. Un evento igual o inferior se rechaza mediante
 Simulacro, Evacuación y Paro conservan procedencia `LOCAL_PANEL` sin que el
 dominio conozca GPIO.
 
+`IMPLEMENTADO`: el parser SAME acepta `CIV-RWT` y `CIV-EQW`, interpreta `TTTT`,
+considera `000000` como difusión a todas las unidades y conserva fecha/emisor
+como metadatos no vinculantes. `SameNoticeTracker` agrupa las repeticiones de
+una ráfaga durante diez segundos sin extender la vigencia. EQW oculta
+temporalmente RWT; al vencer EQW, un RWT aún vigente vuelve a ser visible.
+`NNNN` termina el encuadre recibido, no la vigencia visual.
+
 ## Condiciones de aceptación pendientes
 
-- Identidad, autenticidad, formato y checksum de mensajes.
-- Ventana temporal, tolerancia del RTC y repetición.
-- Correlación y deduplicación.
-- Inicio, duración, cancelación y término de cada evento.
+- Autenticidad y resistencia ante tramas corruptas; SAME no aporta checksum.
+- Integración del supervisor continuo de procesos con el parser.
+- Persistencia de vigencias y recuperación tras reinicio.
+- Cancelación, reconocimiento y término operativo de cada evento.
 - Conducta ante almacenamiento, audio, receptor o energía degradados.
 
 ## Relacionados

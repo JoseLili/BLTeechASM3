@@ -105,6 +105,15 @@ Primera evidencia registrada:
   por `multimon-ng 1.3.1` como
   `ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-`, seguida por tres `NNNN`.
   Es una prueba funcional extremo a extremo, no una medición estadística de BER.
+- `VALIDADO` mediante 15 pruebas unitarias: la trama real con área `000000`,
+  fecha de seis caracteres y emisor no registrado se acepta; `+0300` produce
+  tres horas y `+0001` un minuto. Las tres repeticiones no extienden el plazo,
+  `NNNN` no apaga el aviso y EQW/ALERTA preempta RWT/AVISO hasta vencer.
+- `EJECUTADO` el 2026-09-11: el carrier aceptó cabeceras sintéticas RWT y EQW,
+  mantuvo cada parpadeo no bloqueante durante una ventana acotada de seis
+  segundos y apagó los cuatro GPIO al cerrar. Sigue pendiente la confirmación
+  visual humana de que los rótulos observados fueron AVISO/amarillo y
+  ALERTA/rojo respectivamente.
 
 Prueba HIL de la política completa:
 
@@ -122,6 +131,14 @@ Secuencia visual de prioridades completa:
 
 ```bash
 PYTHONPATH=src /usr/bin/python3 scripts/priority_oled_test.py --seconds 1.5
+```
+
+Prueba visual acotada del parpadeo SAME; detiene y apaga las salidas al concluir,
+sin esperar la vigencia completa:
+
+```bash
+PYTHONPATH=src /usr/bin/python3 scripts/same_indicator_test.py RWT --seconds 6
+PYTHONPATH=src /usr/bin/python3 scripts/same_indicator_test.py EQW --seconds 6
 ```
 
 Diagnóstico HIL de audio:

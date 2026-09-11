@@ -381,6 +381,8 @@ La documentación debe distinguir:
   `multimon-ng` decodificando una RWT.
 - WM8960 enumerado para captura/salida, con HAL diagnóstica y reproducción WAV
   interrumpible.
+- Parser `CIV-RWT`/`CIV-EQW` y supervisor de vigencia `TTTT` con parpadeo
+  AVISO/amarillo o ALERTA/rojo, sin depender de fecha juliana ni emisor.
 
 ### Pendiente
 
