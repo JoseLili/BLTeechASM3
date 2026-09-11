@@ -11,14 +11,17 @@ from asm.application.ports import (
     SystemView,
 )
 from asm.domain.models import AuditRecord, StateTransition
-from asm.domain.states import EventType, SystemState
+from asm.domain.states import EventSource, EventType, SystemState
 from asm.domain.transitions import InvalidTransition, transition
 
 _VIEWS: dict[SystemState, tuple[str, str]] = {
     SystemState.BOOT: ("ASM BLTeech", "Iniciando"),
     SystemState.SELF_TEST: ("Autoprueba", "Verificando sistema"),
     SystemState.IDLE: ("Sistema listo", "En espera"),
+    SystemState.RWT_ACTIVE: ("AVISO RWT", "Evento activo"),
     SystemState.SIMULACRO_ACTIVE: ("SIMULACRO", "Evento activo"),
+    SystemState.EVACUACION_ACTIVE: ("EVACUACION", "Evento activo"),
+    SystemState.EQW_ACTIVE: ("ALERTA SISMICA", "EQW activo"),
     SystemState.STOPPED: ("Evento detenido", "Paro registrado"),
 }
 
@@ -50,7 +53,12 @@ class SystemController:
         self._indicators.apply(indicator_state_for(self._state))
         self._display.show(SystemView(state=self._state, title=title, detail=detail))
 
-    def dispatch(self, event: EventType) -> StateTransition:
+    def dispatch(
+        self,
+        event: EventType,
+        *,
+        source: EventSource = EventSource.SYSTEM,
+    ) -> StateTransition:
         """Apply one event, audit the decision, and update the display."""
         previous_state = self._state
         try:
@@ -60,6 +68,7 @@ class SystemController:
                 AuditRecord(
                     occurred_at=self._clock.now(),
                     event=event,
+                    source=source,
                     previous_state=previous_state,
                     resulting_state=None,
                     accepted=False,
@@ -73,6 +82,7 @@ class SystemController:
             AuditRecord(
                 occurred_at=self._clock.now(),
                 event=event,
+                source=source,
                 previous_state=previous_state,
                 resulting_state=self._state,
                 accepted=True,

@@ -5,13 +5,14 @@ from datetime import UTC, datetime
 import pytest
 
 from asm.domain.models import AuditRecord
-from asm.domain.states import EventType, SystemState
+from asm.domain.states import EventSource, EventType, SystemState
 
 
 def test_audit_record_accepts_aware_timestamp() -> None:
     record = AuditRecord(
         occurred_at=datetime(2026, 8, 5, tzinfo=UTC),
         event=EventType.BOOT_COMPLETED,
+        source=EventSource.SYSTEM,
         previous_state=SystemState.BOOT,
         resulting_state=SystemState.SELF_TEST,
         accepted=True,
@@ -26,6 +27,7 @@ def test_audit_record_rejects_naive_timestamp() -> None:
         AuditRecord(
             occurred_at=datetime(2026, 8, 5),
             event=EventType.BOOT_COMPLETED,
+            source=EventSource.SYSTEM,
             previous_state=SystemState.BOOT,
             resulting_state=SystemState.SELF_TEST,
             accepted=True,
@@ -45,6 +47,7 @@ def test_audit_record_requires_consistent_result(
         AuditRecord(
             occurred_at=datetime(2026, 8, 5, tzinfo=UTC),
             event=EventType.BOOT_COMPLETED,
+            source=EventSource.SYSTEM,
             previous_state=SystemState.BOOT,
             resulting_state=resulting_state,
             accepted=accepted,
@@ -57,6 +60,7 @@ def test_audit_record_rejects_empty_reason() -> None:
         AuditRecord(
             occurred_at=datetime(2026, 8, 5, tzinfo=UTC),
             event=EventType.BOOT_COMPLETED,
+            source=EventSource.SYSTEM,
             previous_state=SystemState.BOOT,
             resulting_state=SystemState.SELF_TEST,
             accepted=True,

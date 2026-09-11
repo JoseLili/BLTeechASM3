@@ -75,11 +75,36 @@ Primera evidencia registrada:
 - `OBSERVADO` el 2026-09-10: I²C mostró PCF8574P en `0x20` y WM8960 ocupado en
   `0x1A`, pero no mostró la OLED en `0x3C`. La notificación OLED del supervisor
   queda pendiente de repetir cuando el módulo vuelva a estar visible en el bus.
+- `VALIDADO` en pruebas unitarias: prioridades estrictas, preempción ascendente,
+  rechazo de eventos iguales/inferiores, Paro permitido en RWT/simulacro/
+  evacuación y Paro rechazado durante EQW.
+- `VALIDADO` mediante dobles: los comandos GPIO conservan origen `LOCAL_PANEL` y
+  la auditoría JSONL persiste decisiones aceptadas y rechazadas con `fsync`.
+- `VALIDADO` el 2026-09-10: la OLED volvió a aparecer físicamente en `0x3C`,
+  mostró el smoke test durante tres segundos y se limpió al finalizar.
+- `EJECUTADO` el 2026-09-10: OLED y GPIO recorrieron sin error BOOT, SELF_TEST,
+  IDLE, RWT, simulacro, evacuación y EQW, con una transición aceptada y emitida
+  por cada paso. Sigue pendiente confirmación visual humana de cada cuadro/LED.
+- `EJECUTADO`: la demo integrada llegó a IDLE, abrió las cinco entradas de
+  energía y creó la auditoría persistente; no se pulsaron botones durante esa
+  ventana, por lo que la ruta física botón→estado se debe repetir.
 
 Prueba HIL de la política completa:
 
 ```bash
 PYTHONPATH=src /usr/bin/python3 scripts/indicator_policy_test.py --seconds 1.5
+```
+
+Demo integrada de botones directos, OLED, LED, energía y registros:
+
+```bash
+PYTHONPATH=src /usr/bin/python3 scripts/operator_panel_demo.py --timeout 180
+```
+
+Secuencia visual de prioridades completa:
+
+```bash
+PYTHONPATH=src /usr/bin/python3 scripts/priority_oled_test.py --seconds 1.5
 ```
 
 ### LAD-120A real

@@ -6,7 +6,11 @@ Diseño conceptual, `PROPUESTO`; no constituye todavía una implementación. Las
 
 ## Estado de implementación
 
-`VALIDADO` en simulación: la primera rebanada implementa únicamente `BOOT → SELF_TEST → IDLE → SIMULACRO_ACTIVE → STOPPED`. Toda transición no incluida se rechaza y audita. Los demás estados permanecen conceptuales hasta acordar sus condiciones y pruebas.
+`VALIDADO` en simulación: están implementados `BOOT → SELF_TEST → IDLE`, los
+cuatro estados activos `RWT`, simulacro, evacuación y EQW, y la preempción
+estricta `EQW > Evacuación > Simulacro > RWT`. RWT, simulacro y evacuación
+admiten `Paro`; EQW no lo admite todavía. Toda transición no incluida se rechaza
+y audita. Los estados de falla y su concurrencia permanecen conceptuales.
 
 ## Estados y entradas principales
 
@@ -28,8 +32,9 @@ Diseño conceptual, `PROPUESTO`; no constituye todavía una implementación. Las
 ## Reglas de transición
 
 - `DECIDIDO`: un EQW válido interrumpe inmediatamente `TECH_MODE` y cualquier evento de menor prioridad.
-- `PROPUESTO`: evacuación interrumpe simulacro y RWT; simulacro interrumpe RWT.
-- `PROPUESTO`: eventos inferiores se rechazan durante uno superior y se auditan sin quedar en cola.
+- `IMPLEMENTADO`: evacuación interrumpe simulacro y RWT; simulacro interrumpe RWT.
+- `IMPLEMENTADO`: eventos iguales o inferiores se rechazan durante uno activo,
+  se auditan y no quedan en cola.
 - `PENDIENTE`: salida de `EQW_ACTIVE`, duración y posibilidad de Paro durante EQW.
 - `PENDIENTE`: quién puede reconocer `STOPPED` y cuándo retorna a `IDLE`.
 
@@ -43,7 +48,10 @@ Diseño conceptual, `PROPUESTO`; no constituye todavía una implementación. Las
 
 ## Paro
 
-`DECIDIDO`: es una orden manual registrada. `PENDIENTE`: matriz exacta de eventos que puede detener, especialmente EQW, y comportamiento de pulsación corta/larga fuera del modo técnico.
+`IMPLEMENTADO` inicialmente: es una orden manual registrada que detiene RWT,
+simulacro y evacuación. Se rechaza en IDLE y durante EQW. `PENDIENTE`: decidir si
+alguna autoridad puede detener EQW y cómo se reconoce `STOPPED` para volver a
+`IDLE`.
 
 ## Fallas concurrentes
 

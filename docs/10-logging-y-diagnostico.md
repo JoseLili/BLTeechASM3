@@ -35,6 +35,11 @@ equivale a aceptar una transición de la máquina de estados. La rotación,
 retención, tolerancia a disco lleno y señalización de error de escritura siguen
 pendientes antes de producción.
 
+`IMPLEMENTADO`: `JsonLineAuditLog` conserva también decisiones operativas
+aceptadas y rechazadas, incluida su procedencia. La demo de panel utiliza
+`~/.local/state/asm-blteech/demo-audit.jsonl` deliberadamente separado de una
+futura bitácora de producción y aplica `fsync` después de cada decisión.
+
 ## Catálogos pendientes
 
 Ya existe el catálogo estable `POWER.<SEÑAL>.<ESTADO>` para esta primera fuente.
