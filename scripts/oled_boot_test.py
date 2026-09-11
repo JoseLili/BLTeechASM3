@@ -12,6 +12,7 @@ from asm.config import DEFAULT_CONFIG
 from asm.infrastructure.console import JsonLineEventLog, SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
 from asm.infrastructure.display.startup_animation import StartupAnimator
+from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -27,10 +28,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise SystemExit("--seconds must be greater than zero")
 
     display = LumaOledDisplay.open(branding=DEFAULT_CONFIG.branding)
+    indicators = GpioIndicatorPanel.open()
     controller = SystemController(
         clock=SystemClock(),
         display=display,
         event_log=JsonLineEventLog(stream=sys.stdout),
+        indicators=indicators,
     )
 
     # Branding is restricted to startup. Event views always bypass the animator.
@@ -46,6 +49,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         time.sleep(args.seconds)
     finally:
+        indicators.close()
         display.clear()
     return 0
 

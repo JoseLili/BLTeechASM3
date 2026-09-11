@@ -7,22 +7,31 @@ import pytest
 from asm.application.controller import SystemController
 from asm.domain.states import EventType, SystemState
 from asm.domain.transitions import InvalidTransition
-from asm.infrastructure.fakes import FakeClock, InMemoryDisplay, InMemoryEventLog
+from asm.infrastructure.fakes import (
+    FakeClock,
+    InMemoryDisplay,
+    InMemoryEventLog,
+    InMemoryIndicatorPanel,
+)
 
 
-def _controller() -> tuple[SystemController, InMemoryDisplay, InMemoryEventLog]:
+def _controller() -> tuple[
+    SystemController, InMemoryDisplay, InMemoryEventLog, InMemoryIndicatorPanel
+]:
     display = InMemoryDisplay()
     event_log = InMemoryEventLog()
+    indicators = InMemoryIndicatorPanel()
     controller = SystemController(
         clock=FakeClock(datetime(2026, 8, 5, tzinfo=UTC)),
         display=display,
         event_log=event_log,
+        indicators=indicators,
     )
-    return controller, display, event_log
+    return controller, display, event_log, indicators
 
 
 def test_complete_initial_flow_is_rendered_and_audited() -> None:
-    controller, display, event_log = _controller()
+    controller, display, event_log, indicators = _controller()
     controller.present()
 
     for event in (
@@ -43,10 +52,13 @@ def test_complete_initial_flow_is_rendered_and_audited() -> None:
     ]
     assert len(event_log.records) == 4
     assert all(record.accepted for record in event_log.records)
+    assert [state.power for state in indicators.history] == [True] * 5
+    assert indicators.history[-2].watch is True
+    assert indicators.history[-1].watch is False
 
 
 def test_invalid_event_is_audited_without_changing_or_rendering() -> None:
-    controller, display, event_log = _controller()
+    controller, display, event_log, indicators = _controller()
 
     with pytest.raises(InvalidTransition):
         controller.dispatch(EventType.START_SIMULACRO)
@@ -56,3 +68,4 @@ def test_invalid_event_is_audited_without_changing_or_rendering() -> None:
     assert len(event_log.records) == 1
     assert event_log.records[0].accepted is False
     assert event_log.records[0].resulting_state is None
+    assert indicators.history == []

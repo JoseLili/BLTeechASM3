@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from asm.application.ports import SystemView
+from asm.application.ports import DiagnosticView, SystemView
+from asm.domain.diagnostics import DiagnosticRecord
+from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
 
 
@@ -27,9 +29,13 @@ class InMemoryDisplay:
     """Capture rendered views in order."""
 
     history: list[SystemView] = field(default_factory=list)
+    diagnostics: list[DiagnosticView] = field(default_factory=list)
 
     def show(self, view: SystemView) -> None:
         self.history.append(view)
+
+    def show_diagnostic(self, view: DiagnosticView) -> None:
+        self.diagnostics.append(view)
 
 
 @dataclass(slots=True)
@@ -40,3 +46,23 @@ class InMemoryEventLog:
 
     def append(self, record: AuditRecord) -> None:
         self.records.append(record)
+
+
+@dataclass(slots=True)
+class InMemoryDiagnosticLog:
+    """Capture hardware diagnostic records in append-only order."""
+
+    records: list[DiagnosticRecord] = field(default_factory=list)
+
+    def append(self, record: DiagnosticRecord) -> None:
+        self.records.append(record)
+
+
+@dataclass(slots=True)
+class InMemoryIndicatorPanel:
+    """Capture complete panel states in order."""
+
+    history: list[IndicatorState] = field(default_factory=list)
+
+    def apply(self, state: IndicatorState) -> None:
+        self.history.append(state)

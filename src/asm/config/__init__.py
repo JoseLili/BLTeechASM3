@@ -8,6 +8,7 @@ from asm.config.models import (
     ConfigurableButtonAction,
     DisplayConfig,
     MenuButtonInputConfig,
+    PowerMonitoringConfig,
     ReceiverConfig,
     SystemConfig,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "ConfigurableButtonAction",
     "DisplayConfig",
     "MenuButtonInputConfig",
+    "PowerMonitoringConfig",
     "ReceiverConfig",
     "SystemConfig",
 ]

@@ -13,19 +13,24 @@ from asm.application.channel_editor import (
     ChannelStorageError,
     ReceiverChannelEditor,
 )
+from asm.application.indicator_policy import indicator_state_for
 from asm.application.menu_controller import DEFAULT_MENU, MenuController
 from asm.application.menu_input import MenuCommand
 from asm.application.ports import SystemView
 from asm.application.power_presenter import power_status_view
+from asm.application.power_supervisor import PowerSupervisor
 from asm.application.receiver_service import ReceiverError, ReceiverService
 from asm.config import DEFAULT_CONFIG
 from asm.domain.receiver import ReceiverProfile
 from asm.domain.states import SystemState
+from asm.infrastructure.console import SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
+from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
 from asm.infrastructure.gpio.power_monitor import GpioPowerMonitor
 from asm.infrastructure.i2c.pcf8574_menu_buttons import Pcf8574MenuButtons
 from asm.infrastructure.receiver.sa818_serial import Sa818SerialReceiver
 from asm.infrastructure.storage.channel_config import JsonReceiverChannelRepository
+from asm.infrastructure.storage.diagnostic_log import JsonLineDiagnosticLog
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -35,6 +40,11 @@ def _parser() -> argparse.ArgumentParser:
         "--state-file",
         type=Path,
         default=Path.home() / ".local/state/asm-blteech/receiver.json",
+    )
+    parser.add_argument(
+        "--diagnostic-log",
+        type=Path,
+        default=Path.home() / ".local/state/asm-blteech/diagnostics.jsonl",
     )
     return parser
 
@@ -75,6 +85,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"FAIL power monitor: {error}")
         return 2
 
+    try:
+        indicators = GpioIndicatorPanel.open()
+    except RuntimeError as error:
+        power_monitor.close()
+        receiver_adapter.close()
+        display.clear()
+        print(f"FAIL indicator panel: {error}")
+        return 2
+
     menu = MenuController(display=display, root=DEFAULT_MENU)
     channel_editor = ReceiverChannelEditor(
         display=display,
@@ -86,6 +105,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         state=SystemState.IDLE,
         title="Sistema listo",
         detail="ENTER abre menu",
+    )
+    indicators.apply(indicator_state_for(SystemState.IDLE))
+    power_supervisor = PowerSupervisor(
+        monitor=power_monitor,
+        clock=SystemClock(),
+        monotonic=time.monotonic,
+        display=display,
+        diagnostic_log=JsonLineDiagnosticLog(args.diagnostic_log),
+        debounce_seconds=DEFAULT_CONFIG.power_monitoring.debounce_seconds,
     )
 
     def command_received(command: MenuCommand) -> None:
@@ -142,12 +170,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         deadline = time.monotonic() + args.timeout
         while time.monotonic() < deadline:
             panel.poll()
+            power_supervisor.poll()
             time.sleep(0.01)
         return 0
     except KeyboardInterrupt:
         return 130
     finally:
         panel.close()
+        indicators.close()
         power_monitor.close()
         receiver_adapter.close()
         display.clear()

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from asm.domain.diagnostics import DiagnosticRecord, DiagnosticSeverity
 from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
 from asm.domain.power import PowerStatus
@@ -39,6 +40,23 @@ class MenuView:
             raise ValueError("selected_index must reference a menu item")
 
 
+@dataclass(frozen=True, slots=True)
+class DiagnosticView:
+    """Short-lived diagnostic notice suitable for the 128x64 OLED."""
+
+    title: str
+    lines: tuple[str, ...]
+    severity: DiagnosticSeverity
+
+    def __post_init__(self) -> None:
+        if not self.title.strip():
+            raise ValueError("diagnostic title must not be empty")
+        if not 1 <= len(self.lines) <= 3:
+            raise ValueError("diagnostic view must contain between one and three lines")
+        if any(not line.strip() for line in self.lines):
+            raise ValueError("diagnostic lines must not be empty")
+
+
 class ClockPort(Protocol):
     """Provide civil time without coupling the application to the system clock."""
 
@@ -57,10 +75,22 @@ class MenuDisplayPort(Protocol):
     def show_menu(self, view: MenuView) -> None: ...
 
 
+class DiagnosticDisplayPort(Protocol):
+    """Present an asynchronous diagnostic notice."""
+
+    def show_diagnostic(self, view: DiagnosticView) -> None: ...
+
+
 class EventLogRepository(Protocol):
     """Persist audit records in append-only order."""
 
     def append(self, record: AuditRecord) -> None: ...
+
+
+class DiagnosticLogRepository(Protocol):
+    """Persist hardware diagnostic records in append-only order."""
+
+    def append(self, record: DiagnosticRecord) -> None: ...
 
 
 class ReceiverPort(Protocol):

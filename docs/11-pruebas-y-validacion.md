@@ -62,6 +62,25 @@ Primera evidencia registrada:
   GPIO, elimina salidas residuales y el cierre garantiza todo apagado.
 - `EJECUTADO`: la secuencia HIL activó individualmente GPIO23, GPIO24, GPIO25 y
   GPIO4 y finalizó con los cuatro en LOW; confirmación visual aún pendiente.
+- `VALIDADO` mediante dobles: cada entrada Mean Well se estabiliza de forma
+  independiente, un pulso menor a 250 ms no genera evidencia, `UNKNOWN` se
+  muestra como advertencia y todo cambio publicado llega tanto a OLED como al
+  registro estructurado.
+- `VALIDADO` mediante dobles: la política de indicadores cubre todos los estados,
+  conserva ENERGÍA encendido, usa AVISO para RWT, PRECAUCIÓN para
+  simulacro/evacuación y ALERTA para EQW o fallas, sin LEDs residuales.
+- `EJECUTADO`: la política recorrió físicamente IDLE, RWT, simulacro,
+  evacuación, EQW, fallo de energía y STOPPED; al cerrar, GPIO4/23/24/25
+  quedaron como entradas LOW. Sigue pendiente confirmar visualmente cada rótulo.
+- `OBSERVADO` el 2026-09-10: I²C mostró PCF8574P en `0x20` y WM8960 ocupado en
+  `0x1A`, pero no mostró la OLED en `0x3C`. La notificación OLED del supervisor
+  queda pendiente de repetir cuando el módulo vuelva a estar visible en el bus.
+
+Prueba HIL de la política completa:
+
+```bash
+PYTHONPATH=src /usr/bin/python3 scripts/indicator_policy_test.py --seconds 1.5
+```
 
 ### LAD-120A real
 

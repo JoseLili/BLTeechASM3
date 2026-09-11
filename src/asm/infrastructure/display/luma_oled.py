@@ -10,7 +10,7 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from typing import Protocol, Self
 
-from asm.application.ports import MenuView, SystemView
+from asm.application.ports import DiagnosticView, MenuView, SystemView
 from asm.config.models import BrandingConfig
 from asm.infrastructure.display.startup_animation import StartupFrame
 
@@ -109,6 +109,16 @@ class LumaOledDisplay:
                 absolute_index = start + row
                 prefix = ">" if absolute_index == view.selected_index else " "
                 draw.text((3, 16 + row * 12), f"{prefix}{_fit(label, 17)}", fill="white")
+
+    def show_diagnostic(self, view: DiagnosticView) -> None:
+        """Render an asynchronous diagnostic notice without changing system state."""
+        with self._canvas_factory(self._device) as draw:
+            draw.rectangle(self._device.bounding_box, outline="white", fill="black")
+            draw.text((3, 1), _fit(view.title, 19), fill="white")
+            draw.text((102, 1), _fit(view.severity.value, 4), fill="white")
+            draw.line((2, 12, 125, 12), fill="white")
+            for row, line in enumerate(view.lines):
+                draw.text((3, 17 + row * 14), _fit(line, 20), fill="white")
 
     def show_startup_frame(self, frame: StartupFrame) -> None:
         """Draw one branded frame without changing or interpreting system state."""

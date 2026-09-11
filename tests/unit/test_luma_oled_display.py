@@ -4,8 +4,9 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from asm.application.ports import MenuView, SystemView
+from asm.application.ports import DiagnosticView, MenuView, SystemView
 from asm.config import DEFAULT_CONFIG
+from asm.domain.diagnostics import DiagnosticSeverity
 from asm.domain.states import SystemState
 from asm.infrastructure.display.luma_oled import LumaOledDisplay, _fit, _waveform_prefix
 from asm.infrastructure.display.startup_animation import StartupFrame
@@ -116,4 +117,34 @@ def test_oled_adapter_renders_scrolling_menu_and_selected_marker() -> None:
         " Diagnostico",
         " Sistema",
         ">Informacion",
+    ]
+
+
+def test_oled_adapter_renders_diagnostic_notice() -> None:
+    device = FakeDevice()
+    drawing = FakeDrawingSurface()
+
+    @contextmanager
+    def canvas_factory(_device: object) -> Iterator[FakeDrawingSurface]:
+        yield drawing
+
+    display = LumaOledDisplay(
+        device=device,
+        canvas_factory=canvas_factory,
+        branding=DEFAULT_CONFIG.branding,
+    )
+    display.show_diagnostic(
+        DiagnosticView(
+            title="Aviso de energia",
+            lines=("Red CA disponible: NO", "Operacion en bateria: SI"),
+            severity=DiagnosticSeverity.INFO,
+        )
+    )
+
+    text_values = [payload[1] for name, payload in drawing.operations if name == "text"]
+    assert text_values == [
+        "Aviso de energia",
+        "INFO",
+        "Red CA disponible: …",
+        "Operacion en bateri…",
     ]

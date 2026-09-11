@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from asm.application.ports import ClockPort, DisplayPort, EventLogRepository, SystemView
+from asm.application.indicator_policy import indicator_state_for
+from asm.application.ports import (
+    ClockPort,
+    DisplayPort,
+    EventLogRepository,
+    IndicatorPort,
+    SystemView,
+)
 from asm.domain.models import AuditRecord, StateTransition
 from asm.domain.states import EventType, SystemState
 from asm.domain.transitions import InvalidTransition, transition
@@ -25,10 +32,12 @@ class SystemController:
         clock: ClockPort,
         display: DisplayPort,
         event_log: EventLogRepository,
+        indicators: IndicatorPort,
     ) -> None:
         self._clock = clock
         self._display = display
         self._event_log = event_log
+        self._indicators = indicators
         self._state = SystemState.BOOT
 
     @property
@@ -38,6 +47,7 @@ class SystemController:
     def present(self) -> None:
         """Render the current state without changing it."""
         title, detail = _VIEWS[self._state]
+        self._indicators.apply(indicator_state_for(self._state))
         self._display.show(SystemView(state=self._state, title=title, detail=detail))
 
     def dispatch(self, event: EventType) -> StateTransition:

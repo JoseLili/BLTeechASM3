@@ -22,9 +22,25 @@
 
 `PROPUESTO`: una escritura fallida genera diagnóstico visible y usa un buffer acotado, sin bloquear la atención de EQW. `PENDIENTE`: política exacta ante medio lleno/corrupto, retención, integridad criptográfica y exportación.
 
+## Implementación actual
+
+`IMPLEMENTADO`: los cambios estables de las cinco entradas Mean Well se
+persisten en `~/.local/state/asm-blteech/diagnostics.jsonl`. Cada línea contiene
+timestamp ISO 8601, componente, código estable, severidad, mensaje y contexto
+`signal/previous/current`. Cada append se vacía con `fsync` para reducir la
+pérdida ante un corte abrupto.
+
+Este flujo es distinto de `AuditRecord`: observar un cambio eléctrico no
+equivale a aceptar una transición de la máquina de estados. La rotación,
+retención, tolerancia a disco lleno y señalización de error de escritura siguen
+pendientes antes de producción.
+
 ## Catálogos pendientes
 
-Se requieren códigos estables, severidades, política de deduplicación/rate limiting y matriz que determine qué diagnósticos exigen `MAINTENANCE_REQUIRED`.
+Ya existe el catálogo estable `POWER.<SEÑAL>.<ESTADO>` para esta primera fuente.
+Siguen pendientes códigos para otros componentes, política general de
+deduplicación/rate limiting y la matriz que determine qué diagnósticos exigen
+`MAINTENANCE_REQUIRED`.
 
 ## Estado del reloj de la unidad de pruebas
 

@@ -9,6 +9,7 @@ from asm.config.models import (
     ConfigurableButtonAction,
     DisplayConfig,
     MenuButtonInputConfig,
+    PowerMonitoringConfig,
     ReceiverConfig,
     SystemConfig,
 )
@@ -34,6 +35,7 @@ DEFAULT_CONFIG = SystemConfig(
         ),
     ),
     menu_buttons=MenuButtonInputConfig(debounce_seconds=0.05),
+    power_monitoring=PowerMonitoringConfig(debounce_seconds=0.25),
     receiver=ReceiverConfig(
         channel=ReceiverChannel.C7,
         serial_device="/dev/serial0",

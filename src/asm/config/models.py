@@ -89,6 +89,17 @@ class MenuButtonInputConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class PowerMonitoringConfig:
+    """Stability window before publishing a Mean Well input change."""
+
+    debounce_seconds: float
+
+    def __post_init__(self) -> None:
+        if not 0 < self.debounce_seconds <= 5:
+            raise ValueError("debounce_seconds must be greater than zero and at most 5")
+
+
+@dataclass(frozen=True, slots=True)
 class ReceiverConfig:
     """Startup channel and Linux UART timing for the installed receiver."""
 
@@ -113,4 +124,5 @@ class SystemConfig:
     display: DisplayConfig
     buttons: ButtonInputConfig
     menu_buttons: MenuButtonInputConfig
+    power_monitoring: PowerMonitoringConfig
     receiver: ReceiverConfig

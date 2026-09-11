@@ -22,6 +22,7 @@ def test_factory_defaults_describe_current_brand_and_animation() -> None:
     assert DEFAULT_CONFIG.buttons.simulacro.mode is ActivationMode.IMMEDIATE
     assert DEFAULT_CONFIG.buttons.evacuacion.mode is ActivationMode.IMMEDIATE
     assert DEFAULT_CONFIG.menu_buttons.debounce_seconds == 0.05
+    assert DEFAULT_CONFIG.power_monitoring.debounce_seconds == 0.25
     assert DEFAULT_CONFIG.receiver.channel.value == "C7"
     assert DEFAULT_CONFIG.receiver.serial_device == "/dev/serial0"
     assert DEFAULT_CONFIG.receiver.command_timeout_seconds == 2.0
@@ -61,6 +62,12 @@ def test_buttons_reject_invalid_debounce(seconds: float) -> None:
 def test_menu_buttons_reject_invalid_debounce(seconds: float) -> None:
     with pytest.raises(ValueError, match="at most 0.2"):
         replace(DEFAULT_CONFIG.menu_buttons, debounce_seconds=seconds)
+
+
+@pytest.mark.parametrize("seconds", [0, -0.01, 5.001])
+def test_power_monitoring_rejects_invalid_debounce(seconds: float) -> None:
+    with pytest.raises(ValueError, match="at most 5"):
+        replace(DEFAULT_CONFIG.power_monitoring, debounce_seconds=seconds)
 
 
 @pytest.mark.parametrize("seconds", [0, -1, 10.1])

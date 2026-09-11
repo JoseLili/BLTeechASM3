@@ -42,11 +42,27 @@ significa por sí solo que el sistema completo esté sano o en falla.
 GPIO13, GPIO26, GPIO6 y GPIO12 quedaron HIGH y las cinco señales se reportaron
 `CLEAR`.
 
+`IMPLEMENTADO`: `PowerSupervisor` compara cada señal de forma independiente y
+publica un cambio sólo si permanece estable durante 250 ms. El primer snapshot
+establece la línea base sin fabricar cinco eventos de arranque. Cada cambio
+publicado genera un registro JSONL persistente y un aviso automático en OLED;
+varios cambios del mismo ciclo se agrupan en una sola pantalla.
+
+La ventana de 250 ms es una decisión conservadora inicial y configurable. No se
+asigna todavía `POWER_FAULT`: hasta validar la tabla de verdad con una LAD-120A
+real, `ASSERTED`/`CLEAR` se presentan como observaciones y `UNKNOWN` como dato no
+confiable. Así, una polaridad o combinación todavía no validada no puede crear
+una falsa falla operacional.
+
 Diagnóstico de banco:
 
 ```bash
 PYTHONPATH=src /usr/bin/python3 scripts/power_input_test.py --duration 30
+PYTHONPATH=src /usr/bin/python3 scripts/power_supervisor_test.py --timeout 120
 ```
+
+La segunda orden mantiene la OLED y el registro activos. Agregar `--console`
+permite comprobar el supervisor sin OLED.
 
 ## Plan mínimo de validación física
 
@@ -60,10 +76,9 @@ Los procedimientos eléctricos detallados deben ser revisados por personal compe
 
 ## Preguntas abiertas
 
-- Umbrales y retardos que evitan falsos cambios.
+- Confirmar o ajustar físicamente la ventana inicial de 250 ms.
 - Combinaciones de estados posibles y severidad funcional.
 - Autonomía objetivo, Forced Start y estrategia segura de apagado.
-- Ventana de debounce y cantidad de muestras estables antes de publicar cambios.
 
 ## Relacionados
 

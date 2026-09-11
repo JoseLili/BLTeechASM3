@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado e implementado eléctricamente; política visual pendiente.
+Aceptado e implementado eléctricamente; política visual inicial implementada.
 
 ## Contexto
 
@@ -19,6 +19,13 @@ una combinación engañosa.
 - Mantener fuera del adaptador los patrones, parpadeo, prioridades y asociación
   definitiva con estados del sistema.
 - Proveer una prueba HIL one-hot que termina con todas las salidas apagadas.
+- Derivar el patrón completo desde `SystemState` en una política pura y aplicarlo
+  cada vez que el controlador presenta un estado.
+
+La política inicial es: ENERGÍA durante todo estado controlado; AVISO para RWT;
+PRECAUCIÓN para simulacro y evacuación; ALERTA para EQW, fallo de receptor,
+fallo de energía y mantenimiento. BOOT, SELF_TEST, IDLE, TECH_MODE y STOPPED no
+encienden un indicador de evento.
 
 ## Consecuencias
 
@@ -28,5 +35,6 @@ confirmación visual para detectar polaridad de LED, montaje o fallas físicas.
 
 ## Pendiente
 
-Congelar catálogo visual y precedencia EQW/fallas/operación; repetir el lamp test
-en las cinco carriers y registrar qué indicador físico se iluminó en cada paso.
+Validar visualmente la política con el ensamble completo, congelar precedencia
+cuando coexistan EQW/fallas/operación, repetir el lamp test en las cinco carriers
+y registrar qué indicador físico se iluminó en cada paso.
