@@ -132,6 +132,16 @@ class AudioPlaybackPort(Protocol):
     def stop(self) -> None: ...
 
 
+class SameDecoderStreamPort(Protocol):
+    """Own the external audio decoder pipeline behind a nonblocking API."""
+
+    def start(self) -> None: ...
+
+    def poll_lines(self) -> tuple[str, ...]: ...
+
+    def stop(self) -> None: ...
+
+
 class IndicatorPort(Protocol):
     """Apply a complete semantic state to every panel indicator."""
 

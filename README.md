@@ -383,6 +383,10 @@ La documentación debe distinguir:
   interrumpible.
 - Parser `CIV-RWT`/`CIV-EQW` y supervisor de vigencia `TTTT` con parpadeo
   AVISO/amarillo o ALERTA/rojo, sin depender de fecha juliana ni emisor.
+- Daemon receptor con BOOT OLED, verificación C1-C7, cadena continua
+  `arecord → SoX → multimon-ng`, reinicio con backoff y unidad systemd.
+- HW-084/DS3231 expuesto como `/dev/rtc0`; el kernel inicializa la hora civil y
+  el daemon conserva evidencia RTC en el log de arranque.
 
 ### Pendiente
 
@@ -391,12 +395,10 @@ La documentación debe distinguir:
 - Diseñar ASM-RX-SA818S v0.1.
 - Diseñar ASM-RX-DRA818V v0.1.
 - Comparar receptores.
-- Implementar el stream continuo y supervisor del decoder SAME sobre el perfil
-  de audio GOLD ya congelado.
 - Definir enlace final de control con ASM-RX.
 - Congelar semántica de LEDs.
-- Implementar software greenfield.
-- Crear pruebas de negocio y simuladores de hardware.
+- Integrar botones, Mean Well y audio EQW en el daemon único.
+- Persistir vigencias activas y añadir watchdog de progreso.
 
 ## Documentación prevista
 

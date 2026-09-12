@@ -5,7 +5,8 @@
 - `DECIDIDO`: arquitectura nueva, modular y por capas.
 - `DECIDIDO`: el dominio no depende de Linux, Raspberry Pi ni librerías de hardware.
 - `DECIDIDO`: los efectos laterales se acceden mediante puertos.
-- `PROPUESTO`: distribución Python bajo `src/asm` con `domain`, `application`, `infrastructure` y `config`.
+- `IMPLEMENTADO`: distribución Python bajo `src/asm` con `domain`,
+  `application`, `infrastructure` y `config`.
 
 ## Vista física
 
@@ -27,14 +28,15 @@ puertos de salida → display, LEDs, audio, almacenamiento y watchdog
 
 `domain` contiene reglas puras; `application` coordina casos de uso y declara puertos; `infrastructure` adapta GPIO, I²C, receptor, audio y persistencia; `config` carga y valida configuración sin introducir reglas de negocio.
 
-## Estructura propuesta
+## Estructura implementada
 
 ```text
 src/asm/{domain,application,infrastructure,config}
 tests/{unit,integration,fakes,fixtures}
 ```
 
-Los directorios creados en esta iteración son deliberadamente vacíos. Los contratos solo se implementarán cuando sus semánticas y pruebas estén acordadas.
+Los contratos aíslan dominio y aplicación del hardware. Los adaptadores reales
+cubren actualmente OLED, GPIO, PCF8574, SA818, WM8960/ALSA, persistencia y RTC.
 
 ## Restricciones
 
@@ -45,9 +47,12 @@ Los directorios creados en esta iteración son deliberadamente vacíos. Los cont
 
 ## Pendientes arquitectónicos
 
-- `PENDIENTE`: runtime, versión Python, empaquetado y librerías.
 - `PENDIENTE`: enlace de control y transporte de audio de ASM-RX.
-- `PENDIENTE`: estrategia de procesos, concurrencia, reinicio y despliegue.
+- `IMPLEMENTADO`: primer runtime productivo como daemon único supervisado por
+  systemd, con pipeline SAME hijo y releases identificados por commit.
+- `PENDIENTE`: integrar en ese runtime los botones operativos, menú, Mean Well,
+  audio EQW y watchdog de progreso sin crear escritores concurrentes de OLED o
+  GPIO.
 
 ## Documentos relacionados
 

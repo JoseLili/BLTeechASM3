@@ -10,6 +10,7 @@ from asm.domain.indicators import IndicatorState
 from asm.domain.same import (
     SameEndOfMessage,
     SameHeader,
+    SameIndicatorSnapshot,
     SameNoticeReceipt,
     SameNoticeTracker,
     SameParseError,
@@ -57,13 +58,17 @@ class SameIndicatorSupervisor:
 
         return self._accept_header(decoded)
 
-    def poll(self) -> IndicatorState:
+    def handle_header(self, header: SameHeader) -> SameLineOutcome:
+        """Accept one already-parsed header without reparsing its raw text."""
+        return self._accept_header(header)
+
+    def poll(self) -> SameIndicatorSnapshot:
         """Advance blink/expiry state without blocking the application loop."""
         snapshot = self._tracker.snapshot(now=self._monotonic())
         if snapshot.indicators != self._last_indicators:
             self._indicators.apply(snapshot.indicators)
             self._last_indicators = snapshot.indicators
-        return snapshot.indicators
+        return snapshot
 
     def _accept_header(self, header: SameHeader) -> SameLineOutcome:
         receipt = self._tracker.receive(header, received_at=self._monotonic())

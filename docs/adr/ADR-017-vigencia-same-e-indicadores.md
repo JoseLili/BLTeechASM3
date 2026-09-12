@@ -2,8 +2,7 @@
 
 ## Estado
 
-Aceptado e implementado como política pura y supervisor de indicadores; la
-conexión al stream continuo permanece pendiente.
+Aceptado e implementado, incluida la conexión al stream continuo.
 
 ## Contexto
 
@@ -38,8 +37,8 @@ por fecha juliana o emisor.
 ## Consecuencias
 
 La fecha incorrecta y un emisor nuevo no provocan falsos rechazos. El control de
-tiempo no depende del RTC. El proceso continuo deberá persistir la vigencia para
-recuperarse de un reinicio y será responsable de componer esta indicación con
+tiempo no depende del RTC. El proceso continuo todavía deberá persistir la
+vigencia para recuperarse de un reinicio y será responsable de componer esta indicación con
 simulacro, evacuación y fallas, manteniendo un único escritor de GPIO.
 
 SAME no incluye un checksum; la resistencia ante corrupción se deberá probar

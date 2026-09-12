@@ -35,10 +35,10 @@ def test_rwt_blinks_slowly_and_expires_after_three_hours() -> None:
     assert panel.history[-1] == IndicatorState(advisory=True, power=True)
 
     clock.current = 1.0
-    supervisor.poll()
+    assert supervisor.poll().phase_on is False
     assert panel.history[-1] == IndicatorState(power=True)
     clock.current = 2.0
-    supervisor.poll()
+    assert supervisor.poll().phase_on is True
     assert panel.history[-1] == IndicatorState(advisory=True, power=True)
     clock.current = 10_800.0
     supervisor.poll()

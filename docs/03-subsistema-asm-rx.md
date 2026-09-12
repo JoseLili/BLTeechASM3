@@ -25,6 +25,11 @@ real SA818S-V → `AF_OUT` → entrada derecha/RINPUT1 del WM8960. La captura
 Esta evidencia confirma la ruta funcional; todavía no establece sensibilidad,
 SNR, BER ni márgenes eléctricos de producción.
 
+`IMPLEMENTADO`: el daemon ejecuta esa cadena continuamente sin una shell,
+supervisa la terminación de cada proceso y reinicia con backoff exponencial. Las
+líneas EAS se entregan al parser de aplicación; RWT y EQW aceptadas gobiernan
+OLED, log e indicadores durante la vigencia `TTTT`.
+
 ## Variantes futuras
 
 - `IMPLEMENTADO` en la revisión actual: NiceRF SA818S-V.

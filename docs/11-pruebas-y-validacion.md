@@ -114,6 +114,11 @@ Primera evidencia registrada:
   segundos y apagó los cuatro GPIO al cerrar. Sigue pendiente la confirmación
   visual humana de que los rótulos observados fueron AVISO/amarillo y
   ALERTA/rojo respectivamente.
+- `VALIDADO` el 2026-09-11: 237 pruebas unitarias/integración pasaron en la Pi;
+  Ruff y mypy finalizaron sin errores sobre 59 archivos fuente.
+- `EJECUTADO` el 2026-09-11: el daemon completo mostró BOOT, verificó C7,
+  registró `RTC.READY`, abrió `arecord → SoX → multimon-ng` y, al recibir
+  SIGTERM, cerró los tres procesos y dejó los indicadores apagados.
 
 Prueba HIL de la política completa:
 
@@ -148,6 +153,14 @@ PYTHONPATH=src /usr/bin/python3 scripts/audio_health_test.py
 PYTHONPATH=src /usr/bin/python3 scripts/audio_capture_test.py --seconds 2
 PYTHONPATH=src /usr/bin/python3 scripts/audio_playback_silence_test.py --seconds 1
 PYTHONPATH=src /usr/bin/python3 scripts/audio_health_oled_test.py --seconds 3
+```
+
+Daemon receptor en primer plano para una prueba acotada:
+
+```bash
+PYTHONPATH=src /usr/bin/python3 scripts/asm_daemon.py \
+  --state-file /tmp/asm-receiver.json \
+  --diagnostic-log /tmp/asm-diagnostics.jsonl
 ```
 
 ### LAD-120A real
