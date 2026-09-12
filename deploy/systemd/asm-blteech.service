@@ -1,7 +1,7 @@
 [Unit]
 Description=ASM BLTeech v3 receiver and SAME decoder
-After=local-fs.target sound.target dev-rtc0.device wm8960-audio-board-preload.service
-Wants=sound.target dev-rtc0.device
+After=local-fs.target sound.target wm8960-audio-board-preload.service
+Wants=sound.target
 Requires=wm8960-audio-board-preload.service
 StartLimitIntervalSec=0
 

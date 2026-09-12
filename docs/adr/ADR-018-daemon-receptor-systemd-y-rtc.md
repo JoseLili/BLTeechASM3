@@ -19,7 +19,8 @@ civil aun después de perder alimentación de la Raspberry Pi.
   los hijos al detener el servicio.
 - Reiniciar el pipeline con backoff exponencial de uno a treinta segundos; dejar
   a systemd reiniciar el daemon después de una falla no recuperable.
-- Arrancar después de ALSA, `/dev/rtc0` y la precarga WM8960; mostrar BOOT,
+- Arrancar después de ALSA y la precarga WM8960; inspeccionar `/dev/rtc0` sin
+  convertirlo en una dependencia que pueda bloquear la recepción, mostrar BOOT,
   verificar el canal persistido y después presentar estado IDLE.
 - Usar el HW-084 mediante el driver RTC del kernel. `hctosys=1` establece la
   hora del sistema durante el arranque; la lógica de vigencia continúa usando

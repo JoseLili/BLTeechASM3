@@ -56,9 +56,10 @@ básicos; son dependencias externas del daemon receptor desplegado en la Pi.
 ## Servicio de arranque
 
 `asm-blteech.service` inicia automáticamente después de que estén disponibles
-el sistema de archivos, ALSA, el RTC y la precarga WM8960. Ejecuta BOOT en OLED,
-verifica el canal C1-C7 del SA818, abre el pipeline continuo SAME y se reinicia
-si el proceso falla.
+el sistema de archivos, ALSA y la precarga WM8960. Inspecciona el RTC sin
+bloquear la recepción si éste falta, ejecuta BOOT en OLED, verifica el canal
+C1-C7 del SA818, abre el pipeline continuo SAME y se reinicia si el proceso
+falla.
 
 ```bash
 sudo systemctl status asm-blteech.service
