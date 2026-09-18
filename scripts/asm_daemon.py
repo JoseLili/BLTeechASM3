@@ -23,6 +23,7 @@ from asm.infrastructure.audio.alsa_health import AlsaAudioHealth
 from asm.infrastructure.audio.same_stream import MultimonSameStream
 from asm.infrastructure.console import SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
+from asm.infrastructure.display.null_display import NullDisplay
 from asm.infrastructure.display.startup_animation import StartupAnimator
 from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
 from asm.infrastructure.receiver.sa818_serial import Sa818SerialReceiver
@@ -60,25 +61,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     signal.signal(signal.SIGINT, request_stop)
 
     with ExitStack() as resources:
-        display = LumaOledDisplay.open(branding=DEFAULT_CONFIG.branding)
-        resources.callback(display.clear)
+        try:
+            display: LumaOledDisplay | NullDisplay = LumaOledDisplay.open(
+                branding=DEFAULT_CONFIG.branding
+            )
+        except Exception as error:
+            _log_display_failure(log, clock, stage="open", error=error)
+            display = NullDisplay()
+        resources.callback(_clear_display_safely, display, log, clock)
         panel = GpioIndicatorPanel.open()
         resources.callback(panel.close)
         panel.apply(IndicatorState(power=True))
 
-        StartupAnimator(
-            display=display,
-            sleep=time.sleep,
-            duration_seconds=DEFAULT_CONFIG.display.startup_animation_seconds,
-        ).play(cancelled=lambda: stop_requested)
+        try:
+            StartupAnimator(
+                display=display,
+                sleep=time.sleep,
+                duration_seconds=DEFAULT_CONFIG.display.startup_animation_seconds,
+            ).play(cancelled=lambda: stop_requested)
+        except Exception as error:
+            _log_display_failure(log, clock, stage="startup_animation", error=error)
         if stop_requested:
             return 0
-        display.show(
+        _show_safely(
+            display,
             SystemView(
                 state=SystemState.BOOT,
                 title="ASM BLTeech",
                 detail="Inicializando RX",
-            )
+            ),
+            log=log,
+            clock=clock,
+            stage="boot",
         )
 
         rtc = read_rtc_status()
@@ -119,12 +133,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 severity=DiagnosticSeverity.WARNING,
                 message=str(error),
             )
-            display.show(
+            _show_safely(
+                display,
                 SystemView(
                     state=SystemState.RECEIVER_FAULT,
                     title="Falla receptor",
                     detail="Reinicio automatico",
-                )
+                ),
+                log=log,
+                clock=clock,
+                stage="receiver_fault",
             )
             return 1
         _append(
@@ -189,6 +207,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if outcome.value not in ("IGNORED",):
                     print(f"SAME outcome={outcome.value} line={line}", flush=True)
             messages.poll()
+            if messages.display_update_pending:
+                _append(
+                    log,
+                    clock,
+                    code="DISPLAY.SAFE_WINDOW.STARTED",
+                    severity=DiagnosticSeverity.INFO,
+                    message="Decoder pausado para actualizar pantalla por I2C",
+                )
+                decoder.pause()
+                messages.flush_display()
+                last_decoder_state = None
             time.sleep(0.02)
 
         _append(
@@ -199,6 +228,52 @@ def main(argv: Sequence[str] | None = None) -> int:
             message="Daemon detenido de forma ordenada",
         )
     return 0
+
+
+def _show_safely(
+    display: LumaOledDisplay | NullDisplay,
+    view: SystemView,
+    *,
+    log: JsonLineDiagnosticLog,
+    clock: SystemClock,
+    stage: str,
+) -> None:
+    try:
+        display.show(view)
+    except Exception as error:
+        _log_display_failure(log, clock, stage=stage, error=error)
+
+
+def _clear_display_safely(
+    display: LumaOledDisplay | NullDisplay,
+    log: JsonLineDiagnosticLog,
+    clock: SystemClock,
+) -> None:
+    try:
+        display.clear()
+    except Exception as error:
+        _log_display_failure(log, clock, stage="clear", error=error)
+
+
+def _log_display_failure(
+    log: JsonLineDiagnosticLog,
+    clock: SystemClock,
+    *,
+    stage: str,
+    error: Exception,
+) -> None:
+    _append(
+        log,
+        clock,
+        code="DISPLAY.WRITE.FAILED",
+        severity=DiagnosticSeverity.WARNING,
+        message="La pantalla fallo; la recepcion continua",
+        context=(
+            ("stage", stage),
+            ("error_type", type(error).__name__),
+            ("error", str(error) or type(error).__name__),
+        ),
+    )
 
 
 def _append(

@@ -26,6 +26,11 @@ class ManualMonotonic:
         return self.current
 
 
+class FailingDisplay:
+    def show(self, _view: object) -> None:
+        raise OSError(5, "Input/output error")
+
+
 def _service():  # type: ignore[no-untyped-def]
     monotonic = ManualMonotonic()
     panel = InMemoryIndicatorPanel()
@@ -48,6 +53,8 @@ def test_accepted_rwt_is_logged_presented_and_indicated() -> None:
     outcome = service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
 
     assert outcome is SameLineOutcome.ACCEPTED
+    assert service.display_update_pending is True
+    assert service.flush_display() is True
     assert display.history[-1].state is SystemState.RWT_ACTIVE
     assert display.history[-1].detail == "Vigencia 180 min"
     assert panel.history[-1] == IndicatorState(advisory=True, power=True)
@@ -71,6 +78,7 @@ def test_expiry_restores_idle_view_and_power_only() -> None:
     monotonic.current = 60.0
 
     service.poll()
+    service.flush_display()
 
     assert display.history[-1].state is SystemState.IDLE
     assert panel.history[-1] == IndicatorState(power=True)
@@ -85,3 +93,29 @@ def test_invalid_candidate_is_preserved_as_warning_evidence() -> None:
     assert panel.history == []
     assert display.history == []
     assert log.records[-1].code == "SAME.HEADER.INVALID"
+
+
+def test_display_failure_is_logged_without_losing_accepted_header() -> None:
+    monotonic = ManualMonotonic()
+    panel = InMemoryIndicatorPanel()
+    log = InMemoryDiagnosticLog()
+    service = SameMessageService(
+        indicators=SameIndicatorSupervisor(indicators=panel, monotonic=monotonic),
+        clock=FakeClock(datetime(2026, 9, 11, 23, 43, tzinfo=UTC)),
+        display=FailingDisplay(),
+        diagnostic_log=log,
+    )
+    outcome = service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
+
+    assert outcome is SameLineOutcome.ACCEPTED
+    assert panel.history[-1] == IndicatorState(advisory=True, power=True)
+    assert service.flush_display() is False
+    assert [record.code for record in log.records] == [
+        "SAME.HEADER.ACCEPTED",
+        "DISPLAY.WRITE.FAILED",
+    ]
+    assert service.display_update_pending is False
+
+    service.poll()
+
+    assert service.display_update_pending is False

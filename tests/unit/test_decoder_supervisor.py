@@ -87,3 +87,18 @@ def test_running_failure_stops_stream_and_recovers_after_delay() -> None:
     clock.current = 1.0
     assert supervisor.poll().state is DecoderServiceState.STARTED
     assert second.starts == 1
+
+
+def test_controlled_pause_stops_stream_and_restarts_without_backoff() -> None:
+    clock = ManualMonotonic()
+    first = FakeStream()
+    second = FakeStream()
+    streams = iter((first, second))
+    supervisor = DecoderSupervisor(stream_factory=lambda: next(streams), monotonic=clock)
+    assert supervisor.poll().state is DecoderServiceState.STARTED
+
+    supervisor.pause()
+
+    assert first.stops == 1
+    assert supervisor.poll().state is DecoderServiceState.STARTED
+    assert second.starts == 1

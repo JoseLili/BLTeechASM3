@@ -23,6 +23,8 @@ from asm.domain.same import (
 )
 from asm.domain.states import SystemState
 
+_UNSET = object()
+
 
 class SameMessageService:
     """Consume decoder text while keeping raw evidence for every decision."""
@@ -40,12 +42,26 @@ class SameMessageService:
         self._display = display
         self._diagnostic_log = diagnostic_log
         self._visible_event: SameEventCode | None = None
+        self._attempted_event: SameEventCode | None | object = _UNSET
+        self._pending_display: tuple[SameEventCode | None, SystemView, bool] | None = None
+
+    @property
+    def display_update_pending(self) -> bool:
+        """Return whether the daemon must open a safe display-write window."""
+        return self._pending_display is not None
 
     def present_idle(self) -> None:
-        self._visible_event = None
-        self._display.show(
-            SystemView(state=SystemState.IDLE, title="Sistema listo", detail="Escuchando SAME")
+        """Present the initial idle view before the decoder stream starts."""
+        self._queue_display(
+            event=None,
+            view=SystemView(
+                state=SystemState.IDLE,
+                title="Sistema listo",
+                detail="Escuchando SAME",
+            ),
+            log_change=False,
         )
+        self.flush_display()
 
     def consume(self, line: str) -> SameLineOutcome:
         try:
@@ -77,15 +93,58 @@ class SameMessageService:
     def poll(self) -> None:
         self._present_if_changed(self._indicators.poll())
 
+    def flush_display(self) -> bool:
+        """Attempt one queued write without allowing display I/O to escape.
+
+        Carrier Rev A can reject I2C writes while I2S clocks are active. The
+        daemon therefore calls this only after pausing the decoder stream.
+        Failed writes are audited once and never cause a tight retry loop.
+        """
+        pending = self._pending_display
+        if pending is None:
+            return True
+        self._pending_display = None
+        event, view, log_change = pending
+        previous = self._visible_event
+        try:
+            self._display.show(view)
+        except Exception as error:
+            self._append(
+                code="DISPLAY.WRITE.FAILED",
+                severity=DiagnosticSeverity.WARNING,
+                message="No fue posible actualizar la pantalla; la recepcion continua",
+                context=(
+                    ("requested", event.value if event is not None else "IDLE"),
+                    ("error_type", type(error).__name__),
+                    ("error", str(error) or type(error).__name__),
+                ),
+            )
+            return False
+
+        self._visible_event = event
+        if log_change:
+            self._append(
+                code="SAME.VISIBLE.CHANGED",
+                severity=DiagnosticSeverity.INFO,
+                message="Cambio de aviso SAME visible",
+                context=(
+                    ("previous", previous.value if previous is not None else "NONE"),
+                    ("current", event.value if event is not None else "NONE"),
+                ),
+            )
+        return True
+
     def _present_if_changed(self, snapshot: SameIndicatorSnapshot | None = None) -> None:
         if snapshot is None:
             snapshot = self._indicators.poll()
-        if snapshot.event is self._visible_event:
+        if snapshot.event is self._attempted_event:
             return
-        previous = self._visible_event
-        self._visible_event = snapshot.event
         if snapshot.event is None:
-            self.present_idle()
+            view = SystemView(
+                state=SystemState.IDLE,
+                title="Sistema listo",
+                detail="Escuchando SAME",
+            )
         else:
             state = (
                 SystemState.RWT_ACTIVE
@@ -94,22 +153,22 @@ class SameMessageService:
             )
             title = "AVISO RWT" if snapshot.event is SameEventCode.RWT else "ALERTA SISMICA"
             remaining_minutes = max(1, int((snapshot.expires_in_seconds + 59) // 60))
-            self._display.show(
-                SystemView(
-                    state=state,
-                    title=title,
-                    detail=f"Vigencia {remaining_minutes} min",
-                )
+            view = SystemView(
+                state=state,
+                title=title,
+                detail=f"Vigencia {remaining_minutes} min",
             )
-        self._append(
-            code="SAME.VISIBLE.CHANGED",
-            severity=DiagnosticSeverity.INFO,
-            message="Cambio de aviso SAME visible",
-            context=(
-                ("previous", previous.value if previous is not None else "NONE"),
-                ("current", snapshot.event.value if snapshot.event is not None else "NONE"),
-            ),
-        )
+        self._queue_display(event=snapshot.event, view=view, log_change=True)
+
+    def _queue_display(
+        self,
+        *,
+        event: SameEventCode | None,
+        view: SystemView,
+        log_change: bool,
+    ) -> None:
+        self._attempted_event = event
+        self._pending_display = (event, view, log_change)
 
     def _log_header(self, header: SameHeader, outcome: SameLineOutcome) -> None:
         self._append(

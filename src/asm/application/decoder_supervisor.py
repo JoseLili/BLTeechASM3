@@ -72,9 +72,14 @@ class DecoderSupervisor:
         return DecoderCycle(state=DecoderServiceState.RUNNING, lines=lines)
 
     def close(self) -> None:
+        self.pause()
+
+    def pause(self) -> None:
+        """Stop the stream so shared-bus hardware can be updated safely."""
         stream = self._stream
         self._stream = None
         self._started_at = None
+        self._next_start_at = 0.0
         if stream is not None:
             stream.stop()
 
