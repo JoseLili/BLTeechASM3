@@ -1,4 +1,4 @@
-"""Luma.OLED adapter for the carrier's SSD1306 display.
+"""Luma.OLED adapter for the carrier's 128x64 monochrome display.
 
 This module translates a technology-neutral :class:`SystemView` into pixels.
 It must not decide system states, priorities, or business transitions.
@@ -69,7 +69,7 @@ def _split_label(text: str, *, line_limit: int = 14) -> tuple[str, ...]:
 
 
 class LumaOledDisplay:
-    """Render semantic system views on the validated 128x64 SSD1306 OLED.
+    """Render semantic system views on a 128x64 SSD1306 or SH1106 OLED.
 
     Use :meth:`open` on Raspberry Pi. Direct construction exists so unit tests
     can inject an in-memory device and canvas without importing Luma.OLED.
@@ -93,8 +93,15 @@ class LumaOledDisplay:
         self._large_font = large_font
 
     @classmethod
-    def open(cls, *, branding: BrandingConfig, bus: int = 1, address: int = 0x3C) -> Self:
-        """Open the physical carrier display using its validated I2C values.
+    def open(
+        cls,
+        *,
+        branding: BrandingConfig,
+        bus: int = 1,
+        address: int = 0x3C,
+        controller: str = "sh1106",
+    ) -> Self:
+        """Open the physical display using its I2C values and controller.
 
         Imports remain local by design: PC simulation and domain tests do not
         require Raspberry Pi packages.
@@ -102,7 +109,7 @@ class LumaOledDisplay:
         try:
             from luma.core.interface.serial import i2c  # type: ignore[import-not-found]
             from luma.core.render import canvas  # type: ignore[import-not-found]
-            from luma.oled.device import ssd1306  # type: ignore[import-not-found]
+            from luma.oled.device import sh1106, ssd1306  # type: ignore[import-not-found]
             from PIL import ImageFont  # type: ignore[import-not-found]
         except ImportError as error:
             raise RuntimeError(
@@ -110,7 +117,12 @@ class LumaOledDisplay:
             ) from error
 
         serial = i2c(port=bus, address=address)
-        device = ssd1306(serial, width=128, height=64)
+        device_types = {"ssd1306": ssd1306, "sh1106": sh1106}
+        try:
+            device_type = device_types[controller.lower()]
+        except KeyError as error:
+            raise ValueError(f"unsupported OLED controller: {controller}") from error
+        device = device_type(serial, width=128, height=64)
         try:
             small_font = ImageFont.truetype("DejaVuSans.ttf", 10)
             medium_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 14)

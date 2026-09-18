@@ -44,6 +44,12 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path.home() / ".local/state/asm-blteech/diagnostics.jsonl",
     )
+    parser.add_argument(
+        "--oled-controller",
+        choices=("sh1106", "ssd1306"),
+        default="sh1106",
+        help="Controlador de la OLED 128x64 instalada",
+    )
     return parser
 
 
@@ -63,7 +69,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     with ExitStack() as resources:
         try:
             display: LumaOledDisplay | NullDisplay = LumaOledDisplay.open(
-                branding=DEFAULT_CONFIG.branding
+                branding=DEFAULT_CONFIG.branding,
+                controller=args.oled_controller,
             )
         except Exception as error:
             _log_display_failure(log, clock, stage="open", error=error)
