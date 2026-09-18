@@ -45,18 +45,30 @@ class AlsaAudioPlayer:
     def __init__(
         self,
         *,
-        config: AudioConfig,
-        health: AudioHealthPort,
+        playback_device: str,
         process_factory: ProcessFactory,
+        health: AudioHealthPort | None = None,
     ) -> None:
-        self._config = config
+        if not playback_device.strip():
+            raise ValueError("playback_device must not be empty")
+        self._playback_device = playback_device
         self._health = health
         self._process_factory = process_factory
         self._process: ProcessHandle | None = None
 
     @classmethod
     def open(cls, config: AudioConfig, health: AudioHealthPort) -> AlsaAudioPlayer:
-        return cls(config=config, health=health, process_factory=_start_process)
+        """Open the legacy WM8960 playback route used by hardware diagnostics."""
+        return cls(
+            playback_device=config.pcm_device,
+            health=health,
+            process_factory=_start_process,
+        )
+
+    @classmethod
+    def open_device(cls, playback_device: str) -> AlsaAudioPlayer:
+        """Open one explicit ALSA output without coupling it to capture health."""
+        return cls(playback_device=playback_device, process_factory=_start_process)
 
     @property
     def is_playing(self) -> bool:
@@ -66,15 +78,15 @@ class AlsaAudioPlayer:
         if self.is_playing:
             raise AudioBusyError("an audio asset is already playing")
         self._process = None
-        if not self._health.read().ready_for_playback:
-            raise AudioUnavailableError("WM8960 playback or preload is unavailable")
+        if self._health is not None and not self._health.read().ready_for_playback:
+            raise AudioUnavailableError("configured ALSA playback is unavailable")
         if not asset.is_file():
             raise FileNotFoundError(asset)
         if asset.suffix.lower() != ".wav":
             raise ValueError("only WAV assets are accepted")
 
         process = self._process_factory(
-            ("/usr/bin/aplay", "-q", "-D", self._config.pcm_device, str(asset))
+            ("/usr/bin/aplay", "-q", "-D", self._playback_device, str(asset))
         )
         return_code = process.poll()
         if return_code not in (None, 0):

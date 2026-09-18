@@ -102,3 +102,41 @@ def test_priority_flow_updates_oled_views_and_led_policy_together() -> None:
     assert indicators.history[-2].watch is True
     assert indicators.history[-1].warning is True
     assert len(event_log.records) == 6
+
+
+def test_event_audio_starts_before_led_and_display_outputs() -> None:
+    trace: list[str] = []
+
+    class OrderedAudio:
+        def play(self, _event: EventType) -> bool:
+            trace.append("audio")
+            return True
+
+        def poll(self) -> None:
+            return
+
+        def stop(self) -> None:
+            trace.append("audio-stop")
+
+    class OrderedIndicators:
+        def apply(self, _state: object) -> None:
+            trace.append("led")
+
+    class OrderedDisplay:
+        def show(self, _view: object) -> None:
+            trace.append("display")
+
+    controller = SystemController(
+        clock=FakeClock(datetime(2026, 8, 5, tzinfo=UTC)),
+        display=OrderedDisplay(),  # type: ignore[arg-type]
+        event_log=InMemoryEventLog(),
+        indicators=OrderedIndicators(),  # type: ignore[arg-type]
+        audio=OrderedAudio(),
+    )
+    controller.dispatch(EventType.BOOT_COMPLETED)
+    controller.dispatch(EventType.SELF_TEST_PASSED)
+    trace.clear()
+
+    controller.dispatch(EventType.START_SIMULACRO)
+
+    assert trace == ["audio", "led", "display"]

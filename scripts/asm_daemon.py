@@ -10,6 +10,7 @@ from contextlib import ExitStack
 from pathlib import Path
 
 from asm.application.decoder_supervisor import DecoderServiceState, DecoderSupervisor
+from asm.application.event_audio import EventAudioService
 from asm.application.ports import SystemView
 from asm.application.receiver_service import ReceiverError, ReceiverService
 from asm.application.same_indicator_supervisor import SameIndicatorSupervisor
@@ -20,6 +21,7 @@ from asm.domain.indicators import IndicatorState
 from asm.domain.receiver import ReceiverProfile
 from asm.domain.states import SystemState
 from asm.infrastructure.audio.alsa_health import AlsaAudioHealth
+from asm.infrastructure.audio.alsa_player import AlsaAudioPlayer
 from asm.infrastructure.audio.same_stream import MultimonSameStream
 from asm.infrastructure.console import SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
@@ -30,6 +32,8 @@ from asm.infrastructure.receiver.sa818_serial import Sa818SerialReceiver
 from asm.infrastructure.rtc_health import read_rtc_status
 from asm.infrastructure.storage.channel_config import JsonReceiverChannelRepository
 from asm.infrastructure.storage.diagnostic_log import JsonLineDiagnosticLog
+
+_RELEASE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -49,6 +53,17 @@ def _parser() -> argparse.ArgumentParser:
         choices=("sh1106", "ssd1306"),
         default="sh1106",
         help="Controlador de la OLED 128x64 instalada",
+    )
+    parser.add_argument(
+        "--audio-directory",
+        type=Path,
+        default=_RELEASE_ROOT / "assets/audio",
+        help="Directorio con rwt.wav, eqw.wav, simulacro.wav y evacuacion.wav",
+    )
+    parser.add_argument(
+        "--playback-device",
+        default="plughw:CARD=Headphones,DEV=0",
+        help="Dispositivo ALSA explicito para los WAV de alerta",
     )
     return parser
 
@@ -162,11 +177,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         health = AlsaAudioHealth.open(DEFAULT_CONFIG.audio)
+        alert_audio = EventAudioService(
+            player=AlsaAudioPlayer.open_device(args.playback_device),
+            asset_directory=args.audio_directory,
+            clock=clock,
+            diagnostic_log=log,
+        )
+        resources.callback(alert_audio.close)
         same_indicators = SameIndicatorSupervisor(indicators=panel, monotonic=time.monotonic)
         messages = SameMessageService(
             indicators=same_indicators,
             clock=clock,
             display=display,
+            audio=alert_audio,
             diagnostic_log=log,
         )
         decoder = DecoderSupervisor(

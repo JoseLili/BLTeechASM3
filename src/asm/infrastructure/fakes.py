@@ -9,6 +9,7 @@ from asm.application.ports import DiagnosticView, SystemView
 from asm.domain.diagnostics import DiagnosticRecord
 from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
+from asm.domain.states import EventType
 
 
 @dataclass(slots=True)
@@ -66,3 +67,21 @@ class InMemoryIndicatorPanel:
 
     def apply(self, state: IndicatorState) -> None:
         self.history.append(state)
+
+
+@dataclass(slots=True)
+class InMemoryEventAudio:
+    """Capture requested event audio without opening ALSA."""
+
+    played: list[EventType] = field(default_factory=list)
+    stop_calls: int = 0
+
+    def play(self, event: EventType) -> bool:
+        self.played.append(event)
+        return True
+
+    def poll(self) -> None:
+        return
+
+    def stop(self) -> None:
+        self.stop_calls += 1

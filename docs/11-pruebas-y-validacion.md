@@ -97,6 +97,12 @@ Primera evidencia registrada:
 - `EJECUTADO` el 2026-09-11: una reproducción WAV silenciosa de un segundo
   finalizó correctamente en el PCM WM8960. Esto valida apertura y control del
   stream, no la salida acústica ni el cableado BTL del altavoz.
+- `EJECUTADO` el 2026-09-18: ALSA enumeró el jack de Pi 4 como
+  `plughw:CARD=Headphones,DEV=0`; reprodujo un WAV silencioso mientras el daemon
+  conservó activos `arecord`, SoX y `multimon-ng`, sin reinicio del servicio.
+- `IMPLEMENTADO`: RWT, EQW, Simulacro y Evacuación seleccionan sus WAV locales;
+  el inicio se solicita antes de LED/OLED, EQW preempta audios inferiores y un
+  archivo ausente se registra sin perder las demás salidas.
 - `EJECUTADO` el 2026-09-11: el diagnóstico de audio se dibujó por tres segundos
   en la OLED y se limpió sin error; la confirmación visual humana de los cuatro
   rótulos sigue pendiente.

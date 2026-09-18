@@ -379,8 +379,10 @@ La documentación debe distinguir:
 - Ruta de señales opto–GPIO probada con jumper.
 - SA818S-V configurado por UART y ruta real SA818S-V → WM8960 → GOLD →
   `multimon-ng` decodificando una RWT.
-- WM8960 enumerado para captura/salida, con HAL diagnóstica y reproducción WAV
-  interrumpible.
+- WM8960 enumerado para captura y el jack `Headphones` de la Pi separado para
+  reproducción WAV interrumpible; ambos streams operaron simultáneamente.
+- Catálogo `rwt.wav`, `eqw.wav`, `simulacro.wav` y `evacuacion.wav`, con orden
+  audio → LED → OLED, preempción por prioridad y fallas auditables no fatales.
 - Parser `CIV-RWT`/`CIV-EQW` y supervisor de vigencia `TTTT` con parpadeo
   AVISO/amarillo o ALERTA/rojo, sin depender de fecha juliana ni emisor.
 - Daemon receptor con BOOT OLED, verificación C1-C7, cadena continua
@@ -397,7 +399,8 @@ La documentación debe distinguir:
 - Comparar receptores.
 - Definir enlace final de control con ASM-RX.
 - Congelar semántica de LEDs.
-- Integrar botones, Mean Well y audio EQW en el daemon único.
+- Integrar botones, menú y Mean Well en el daemon único.
+- Cargar y validar acústicamente los cuatro WAV operativos definitivos.
 - Persistir vigencias activas y añadir watchdog de progreso.
 
 ## Documentación prevista

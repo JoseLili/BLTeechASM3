@@ -60,19 +60,34 @@ class SameIndicatorSupervisor:
 
     def handle_header(self, header: SameHeader) -> SameLineOutcome:
         """Accept one already-parsed header without reparsing its raw text."""
-        return self._accept_header(header)
-
-    def poll(self) -> SameIndicatorSnapshot:
-        """Advance blink/expiry state without blocking the application loop."""
-        snapshot = self._tracker.snapshot(now=self._monotonic())
-        if snapshot.indicators != self._last_indicators:
-            self._indicators.apply(snapshot.indicators)
-            self._last_indicators = snapshot.indicators
-        return snapshot
-
-    def _accept_header(self, header: SameHeader) -> SameLineOutcome:
-        receipt = self._tracker.receive(header, received_at=self._monotonic())
+        outcome = self.track_header(header)
         self.poll()
+        return outcome
+
+    def track_header(self, header: SameHeader) -> SameLineOutcome:
+        """Update notice validity without applying panel outputs yet."""
+        receipt = self._tracker.receive(header, received_at=self._monotonic())
         if receipt is SameNoticeReceipt.DUPLICATE:
             return SameLineOutcome.DUPLICATE
         return SameLineOutcome.ACCEPTED
+
+    def snapshot(self) -> SameIndicatorSnapshot:
+        """Read current notice state without touching physical indicators."""
+        return self._tracker.snapshot(now=self._monotonic())
+
+    def apply_snapshot(self, snapshot: SameIndicatorSnapshot) -> None:
+        """Apply a previously inspected snapshot to the physical panel."""
+        if snapshot.indicators != self._last_indicators:
+            self._indicators.apply(snapshot.indicators)
+            self._last_indicators = snapshot.indicators
+
+    def poll(self) -> SameIndicatorSnapshot:
+        """Advance blink/expiry state without blocking the application loop."""
+        snapshot = self.snapshot()
+        self.apply_snapshot(snapshot)
+        return snapshot
+
+    def _accept_header(self, header: SameHeader) -> SameLineOutcome:
+        outcome = self.track_header(header)
+        self.poll()
+        return outcome

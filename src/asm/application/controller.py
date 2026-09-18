@@ -6,11 +6,13 @@ from asm.application.indicator_policy import indicator_state_for
 from asm.application.ports import (
     ClockPort,
     DisplayPort,
+    EventAudioPort,
     EventLogRepository,
     IndicatorPort,
     SystemView,
 )
 from asm.domain.models import AuditRecord, StateTransition
+from asm.domain.priorities import EVENT_PRIORITIES
 from asm.domain.states import EventSource, EventType, SystemState
 from asm.domain.transitions import InvalidTransition, transition
 
@@ -36,11 +38,13 @@ class SystemController:
         display: DisplayPort,
         event_log: EventLogRepository,
         indicators: IndicatorPort,
+        audio: EventAudioPort | None = None,
     ) -> None:
         self._clock = clock
         self._display = display
         self._event_log = event_log
         self._indicators = indicators
+        self._audio = audio
         self._state = SystemState.BOOT
 
     @property
@@ -89,5 +93,10 @@ class SystemController:
                 reason="transition accepted",
             )
         )
+        if self._audio is not None:
+            if event is EventType.STOP_REQUESTED:
+                self._audio.stop()
+            elif event in EVENT_PRIORITIES:
+                self._audio.play(event)
         self.present()
         return result

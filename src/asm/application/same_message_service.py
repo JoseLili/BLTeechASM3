@@ -6,6 +6,7 @@ from asm.application.ports import (
     ClockPort,
     DiagnosticLogRepository,
     DisplayPort,
+    EventAudioPort,
     SystemView,
 )
 from asm.application.same_indicator_supervisor import (
@@ -21,7 +22,7 @@ from asm.domain.same import (
     SameParseError,
     parse_multimon_same_line,
 )
-from asm.domain.states import SystemState
+from asm.domain.states import EventType, SystemState
 
 _UNSET = object()
 
@@ -35,11 +36,13 @@ class SameMessageService:
         indicators: SameIndicatorSupervisor,
         clock: ClockPort,
         display: DisplayPort,
+        audio: EventAudioPort,
         diagnostic_log: DiagnosticLogRepository,
     ) -> None:
         self._indicators = indicators
         self._clock = clock
         self._display = display
+        self._audio = audio
         self._diagnostic_log = diagnostic_log
         self._visible_event: SameEventCode | None = None
         self._attempted_event: SameEventCode | None | object = _UNSET
@@ -85,13 +88,20 @@ class SameMessageService:
             )
             return SameLineOutcome.END_OF_MESSAGE
 
-        outcome = self._indicators.handle_header(decoded)
+        outcome = self._indicators.track_header(decoded)
+        snapshot = self._indicators.snapshot()
+        self._start_audio_if_changed(snapshot)
         self._log_header(decoded, outcome)
-        self._present_if_changed()
+        self._indicators.apply_snapshot(snapshot)
+        self._present_if_changed(snapshot)
         return outcome
 
     def poll(self) -> None:
-        self._present_if_changed(self._indicators.poll())
+        self._audio.poll()
+        snapshot = self._indicators.snapshot()
+        self._start_audio_if_changed(snapshot)
+        self._indicators.apply_snapshot(snapshot)
+        self._present_if_changed(snapshot)
 
     def flush_display(self) -> bool:
         """Attempt one queued write without allowing display I/O to escape.
@@ -159,6 +169,20 @@ class SameMessageService:
                 detail=f"Vigencia {remaining_minutes} min",
             )
         self._queue_display(event=snapshot.event, view=view, log_change=True)
+
+    def _start_audio_if_changed(self, snapshot: SameIndicatorSnapshot) -> None:
+        """Start audio before LED/display whenever the visible event changes."""
+        if snapshot.event is self._attempted_event:
+            return
+        if snapshot.event is None:
+            self._audio.stop()
+            return
+        event = (
+            EventType.START_RWT
+            if snapshot.event is SameEventCode.RWT
+            else EventType.START_EQW
+        )
+        self._audio.play(event)
 
     def _queue_display(
         self,

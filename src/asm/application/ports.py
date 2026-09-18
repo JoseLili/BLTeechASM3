@@ -13,7 +13,7 @@ from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
 from asm.domain.power import PowerStatus
 from asm.domain.receiver import ReceiverChannel, ReceiverConfigurationResult, ReceiverProfile
-from asm.domain.states import SystemState
+from asm.domain.states import EventType, SystemState
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +128,16 @@ class AudioPlaybackPort(Protocol):
     def is_playing(self) -> bool: ...
 
     def start(self, asset: Path) -> None: ...
+
+    def stop(self) -> None: ...
+
+
+class EventAudioPort(Protocol):
+    """Play one priority-controlled WAV for an operational event."""
+
+    def play(self, event: EventType) -> bool: ...
+
+    def poll(self) -> None: ...
 
     def stop(self) -> None: ...
 

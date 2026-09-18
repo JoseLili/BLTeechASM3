@@ -2,7 +2,8 @@
 
 ## Estado
 
-Aceptado, implementado para diagnóstico/reproducción y validado en una RWT real.
+Aceptado, implementado para captura WM8960 y reproducción por jack de Pi 4, y
+validado en una RWT real.
 
 ## Contexto
 
@@ -16,6 +17,8 @@ llegó a contener solamente ceros aun cuando ALSA enumeraba la tarjeta.
 
 - Identificar la tarjeta por el nombre ALSA exacto `wm8960soundcard` y usar
   `hw:wm8960soundcard,0`.
+- Reproducir las alertas por el dispositivo independiente
+  `plughw:CARD=Headphones,DEV=0`; nunca por el PCM de captura WM8960.
 - Capturar `S32_LE`, 48000 Hz, dos canales y seleccionar el canal derecho
   (índice 1) como entrada del SA818S-V.
 - Alimentar al decoder GOLD con `S16_LE`, 22050 Hz, mono, obtenido únicamente
@@ -26,8 +29,8 @@ llegó a contener solamente ceros aun cuando ALSA enumeraba la tarjeta.
 - Detectar en el diagnóstico finito el caso inequívoco de muestras exactamente
   en cero sin declarar todavía un umbral acústico arbitrario.
 - No modificar I²C ni mezclador mientras exista un stream I²S activo.
-- Permitir una sola reproducción WAV y exigir una detención explícita antes de
-  reemplazarla.
+- Permitir una sola reproducción WAV y reemplazarla únicamente por un evento
+  de mayor prioridad; Paro y vencimiento conservan detención explícita.
 
 ## Evidencia
 

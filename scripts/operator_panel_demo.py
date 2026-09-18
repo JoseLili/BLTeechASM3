@@ -11,11 +11,13 @@ from queue import Empty, SimpleQueue
 
 from asm.application.button_policy import ButtonCommand
 from asm.application.controller import SystemController
+from asm.application.event_audio import EventAudioService
 from asm.application.panel_command_router import PanelCommandRouter
 from asm.application.power_supervisor import PowerSupervisor
 from asm.config import DEFAULT_CONFIG
 from asm.domain.states import EventType
 from asm.domain.transitions import InvalidTransition
+from asm.infrastructure.audio.alsa_player import AlsaAudioPlayer
 from asm.infrastructure.console import SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
 from asm.infrastructure.gpio.button_panel import GpioButtonPanel
@@ -23,6 +25,8 @@ from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
 from asm.infrastructure.gpio.power_monitor import GpioPowerMonitor
 from asm.infrastructure.storage.audit_log import JsonLineAuditLog
 from asm.infrastructure.storage.diagnostic_log import JsonLineDiagnosticLog
+
+_RELEASE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -37,6 +41,15 @@ def _parser() -> argparse.ArgumentParser:
         "--diagnostic-log",
         type=Path,
         default=Path.home() / ".local/state/asm-blteech/diagnostics.jsonl",
+    )
+    parser.add_argument(
+        "--audio-directory",
+        type=Path,
+        default=_RELEASE_ROOT / "assets/audio",
+    )
+    parser.add_argument(
+        "--playback-device",
+        default="plughw:CARD=Headphones,DEV=0",
     )
     return parser
 
@@ -56,19 +69,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         power_monitor = GpioPowerMonitor.open()
         resources.callback(power_monitor.close)
 
+        clock = SystemClock()
+        diagnostic_log = JsonLineDiagnosticLog(args.diagnostic_log)
+        event_audio = EventAudioService(
+            player=AlsaAudioPlayer.open_device(args.playback_device),
+            asset_directory=args.audio_directory,
+            clock=clock,
+            diagnostic_log=diagnostic_log,
+        )
+        resources.callback(event_audio.close)
         controller = SystemController(
-            clock=SystemClock(),
+            clock=clock,
             display=display,
             event_log=JsonLineAuditLog(args.audit_log),
             indicators=indicators,
+            audio=event_audio,
         )
         router = PanelCommandRouter(controller)
         power_supervisor = PowerSupervisor(
             monitor=power_monitor,
-            clock=SystemClock(),
+            clock=clock,
             monotonic=time.monotonic,
             display=display,
-            diagnostic_log=JsonLineDiagnosticLog(args.diagnostic_log),
+            diagnostic_log=diagnostic_log,
             debounce_seconds=DEFAULT_CONFIG.power_monitoring.debounce_seconds,
         )
         panel = GpioButtonPanel.open(
@@ -108,6 +131,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         )
                 for record in power_supervisor.poll():
                     print(f"POWER_EVENT {record.code}")
+                event_audio.poll()
                 time.sleep(0.01)
             return 0
         except KeyboardInterrupt:

@@ -134,13 +134,15 @@ filtros, y exige lectura de vuelta exacta. No existe API software de PTT.
 | Captura física | `S32_LE`, 48000 Hz, 2 canales |
 | Entrada de radio | canal derecho, índice 1, RINPUT1 |
 | Entrada del decoder GOLD | `S16_LE`, 22050 Hz, mono |
+| Salida de alertas | `plughw:CARD=Headphones,DEV=0`, jack de Pi 4 |
 
 `IMPLEMENTADO`: `AlsaAudioHealth` consulta, sin abrir streams, la precarga
 `wm8960-audio-board-preload.service` y la presencia exacta de captura/salida.
 `AlsaCaptureProbe` realiza únicamente capturas WAV finitas y detecta el caso
 anómalo de muestras exactamente en cero; no inventa todavía un umbral de señal
-útil. `AlsaAudioPlayer` posee como máximo una reproducción WAV, permite Paro
-explícito y no reemplaza audio en curso de forma implícita.
+útil. `AlsaAudioPlayer` posee como máximo una reproducción WAV. Para alertas,
+`EventAudioService` selecciona cuatro recursos locales, permite Paro y reemplaza
+audio solamente por un evento de mayor prioridad.
 
 `DECIDIDO`: captura y reproducción son recursos separados. Ningún adaptador
 modifica registros I²C o controles de mezclador mientras exista un stream I²S,
@@ -158,7 +160,8 @@ GPIO0/pin 27 y GPIO1/pin 28 se reservan al ecosistema HAT/EEPROM. GPIO4, 18, 10,
 |---|---|---|
 | `ReceiverPort` | configurar y observar receptor sin conocer módulo | aplicar perfil y devolver estado verificado; implementado para SA818S-V |
 | `AudioHealthPort` | informar disponibilidad de precarga/captura/salida | snapshot de solo lectura implementado para WM8960 |
-| `AudioPlaybackPort` | reproducir/detener un recurso local | WAV único e interrumpible implementado; selección de recursos pendiente |
+| `AudioPlaybackPort` | reproducir/detener un recurso local | WAV único e interrumpible implementado para WM8960 o dispositivo ALSA explícito |
+| `EventAudioPort` | seleccionar audio por evento y prioridad | cuatro WAV, preempción y evidencia diagnóstica implementados |
 | `AudioInputPort` | entregar muestras al decoder SAME | perfil GOLD decidido; streaming, buffering y backpressure pendientes |
 | `DisplayPort` | presentar vistas, no primitivas de bus | mostrar estado/menú/falla; `PENDIENTE` límites y refresco |
 | `ButtonInputPort` | emitir gestos filtrados | eventos cortos/largos/combinados; `PENDIENTE` umbrales |

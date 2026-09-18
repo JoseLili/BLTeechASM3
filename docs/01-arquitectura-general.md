@@ -50,9 +50,12 @@ cubren actualmente OLED, GPIO, PCF8574, SA818, WM8960/ALSA, persistencia y RTC.
 - `PENDIENTE`: enlace de control y transporte de audio de ASM-RX.
 - `IMPLEMENTADO`: primer runtime productivo como daemon único supervisado por
   systemd, con pipeline SAME hijo y releases identificados por commit.
-- `PENDIENTE`: integrar en ese runtime los botones operativos, menú, Mean Well,
-  audio EQW y watchdog de progreso sin crear escritores concurrentes de OLED o
+- `PENDIENTE`: integrar en ese runtime los botones operativos, menú, Mean Well
+  y watchdog de progreso sin crear escritores concurrentes de OLED o
   GPIO.
+- `IMPLEMENTADO`: RWT y EQW disparan WAV no bloqueante por el jack analógico
+  antes de LED y OLED; el mismo servicio está conectado al controlador de
+  Simulacro/Evacuación usado por la demo física.
 
 ## Documentos relacionados
 
