@@ -25,7 +25,7 @@ DEFAULT_CONFIG = SystemConfig(
     ),
     display=DisplayConfig(
         startup_animation_seconds=5.0,
-        idle_notice_seconds=2.0,
+        idle_notice_seconds=10.0,
         rwt_notice_seconds=8.0,
         rwt_summary_seconds=5.0,
     ),

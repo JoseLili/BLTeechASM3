@@ -35,7 +35,7 @@ class FailingDisplay:
         raise OSError(5, "Input/output error")
 
 
-def _service():  # type: ignore[no-untyped-def]
+def _service(*, standby_after_rwt: bool = True):  # type: ignore[no-untyped-def]
     monotonic = ManualMonotonic()
     panel = InMemoryIndicatorPanel()
     display = InMemoryDisplay()
@@ -51,6 +51,7 @@ def _service():  # type: ignore[no-untyped-def]
         monotonic=monotonic,
         rwt_notice_seconds=8.0,
         rwt_summary_seconds=5.0,
+        standby_after_rwt=standby_after_rwt,
     )
     return service, monotonic, panel, display, audio, log
 
@@ -133,6 +134,22 @@ def test_eqw_stays_prominent_for_its_complete_validity() -> None:
     assert display.history[-1].compact is False
 
 
+def test_continuous_display_keeps_rwt_validity_summary_visible() -> None:
+    service, monotonic, _panel, display, _audio, _log = _service(
+        standby_after_rwt=False
+    )
+    service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
+    service.flush_display()
+    monotonic.current = 13.0
+
+    service.poll()
+    service.flush_display()
+
+    assert display.history[-1].compact is True
+    assert display.history[-1].footer == "RWT vigente 180m"
+    assert display.standby_calls == 0
+
+
 def test_confirmed_same_starts_audio_before_led_and_display() -> None:
     trace: list[str] = []
 
@@ -171,6 +188,7 @@ def test_confirmed_same_starts_audio_before_led_and_display() -> None:
         monotonic=monotonic,
         rwt_notice_seconds=8.0,
         rwt_summary_seconds=5.0,
+        standby_after_rwt=True,
     )
 
     service.consume("EAS: ZCZC-CIV-EQW-000000+0001-832300-XDIF/005-")
@@ -219,6 +237,7 @@ def test_display_failure_is_logged_without_losing_accepted_header() -> None:
         monotonic=monotonic,
         rwt_notice_seconds=8.0,
         rwt_summary_seconds=5.0,
+        standby_after_rwt=True,
     )
     outcome = service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
 

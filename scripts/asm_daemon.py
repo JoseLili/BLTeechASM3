@@ -55,6 +55,12 @@ def _parser() -> argparse.ArgumentParser:
         help="Controlador de la OLED 128x64 instalada",
     )
     parser.add_argument(
+        "--oled-listen-mode",
+        choices=("standby", "continuous"),
+        default="standby",
+        help="Apaga pixeles al escuchar (grande) o mantiene estado visible (pequena)",
+    )
+    parser.add_argument(
         "--audio-directory",
         type=Path,
         default=_RELEASE_ROOT / "assets/audio",
@@ -194,6 +200,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             monotonic=time.monotonic,
             rwt_notice_seconds=DEFAULT_CONFIG.display.rwt_notice_seconds,
             rwt_summary_seconds=DEFAULT_CONFIG.display.rwt_summary_seconds,
+            standby_after_rwt=args.oled_listen_mode == "standby",
         )
         decoder = DecoderSupervisor(
             stream_factory=lambda: MultimonSameStream(
@@ -205,7 +212,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         resources.callback(decoder.close)
         messages.present_idle()
         time.sleep(DEFAULT_CONFIG.display.idle_notice_seconds)
-        messages.enter_standby()
+        if args.oled_listen_mode == "standby":
+            messages.enter_standby()
 
         last_decoder_state: DecoderServiceState | None = None
         print(f"READY channel={channel.value} diagnostics={args.diagnostic_log}", flush=True)

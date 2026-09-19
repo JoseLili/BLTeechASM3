@@ -18,7 +18,7 @@ def test_factory_defaults_describe_current_brand_and_animation() -> None:
     assert DEFAULT_CONFIG.branding.product_name == "ASM"
     assert DEFAULT_CONFIG.branding.generation == "v3"
     assert DEFAULT_CONFIG.display.startup_animation_seconds == 5.0
-    assert DEFAULT_CONFIG.display.idle_notice_seconds == 2.0
+    assert DEFAULT_CONFIG.display.idle_notice_seconds == 10.0
     assert DEFAULT_CONFIG.display.rwt_notice_seconds == 8.0
     assert DEFAULT_CONFIG.display.rwt_summary_seconds == 5.0
     assert DEFAULT_CONFIG.buttons.debounce_seconds == 0.05

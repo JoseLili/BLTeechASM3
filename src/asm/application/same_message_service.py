@@ -43,6 +43,7 @@ class SameMessageService:
         monotonic: Callable[[], float],
         rwt_notice_seconds: float,
         rwt_summary_seconds: float,
+        standby_after_rwt: bool,
     ) -> None:
         if rwt_notice_seconds <= 0:
             raise ValueError("rwt_notice_seconds must be greater than zero")
@@ -56,6 +57,7 @@ class SameMessageService:
         self._monotonic = monotonic
         self._rwt_notice_seconds = rwt_notice_seconds
         self._rwt_summary_seconds = rwt_summary_seconds
+        self._standby_after_rwt = standby_after_rwt
         self._visible_event: SameEventCode | None = None
         self._audio_event: SameEventCode | None | object = _UNSET
         self._notice_event: SameEventCode | None = None
@@ -198,12 +200,14 @@ class SameMessageService:
             )
 
         if snapshot.event is None:
-            phase = "standby"
+            phase = "standby" if self._standby_after_rwt else "idle"
         elif snapshot.event is SameEventCode.EQW or (
             self._notice_deadline is not None and now < self._notice_deadline
         ):
             phase = "prominent"
-        elif self._summary_deadline is not None and now < self._summary_deadline:
+        elif not self._standby_after_rwt or (
+            self._summary_deadline is not None and now < self._summary_deadline
+        ):
             phase = "summary"
         else:
             phase = "standby"
@@ -219,7 +223,14 @@ class SameMessageService:
                 phase=phase,
             )
             return
-        if snapshot.event is SameEventCode.RWT and phase == "summary":
+        if snapshot.event is None:
+            view = SystemView(
+                state=SystemState.IDLE,
+                title="Esperando evento",
+                detail="Escuchando SAME",
+                footer="Sin aviso vigente",
+            )
+        elif snapshot.event is SameEventCode.RWT and phase == "summary":
             remaining_minutes = max(1, int((snapshot.expires_in_seconds + 59) // 60))
             view = SystemView(
                 state=SystemState.RWT_ACTIVE,

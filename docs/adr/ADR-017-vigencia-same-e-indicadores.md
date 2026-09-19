@@ -35,8 +35,10 @@ por fecha juliana o emisor.
   `RWT vigente <minutos>m` en el pie. Después, poner la OLED en standby para que
   sus píxeles no degraden la demodulación; el LED Advisory, la vigencia y el log
   no se cancelan. EQW permanece prominente durante toda su vigencia.
-- Mostrar `Esperando evento` durante dos segundos al terminar el arranque y
-  poner la OLED en standby antes de iniciar la captura continua.
+- Mostrar `Esperando evento` durante diez segundos al terminar el arranque y,
+  con la OLED grande, ponerla en standby antes de iniciar la captura continua.
+  Permitir modo `continuous` para la OLED pequeña validada, sin cambiar lógica
+  de eventos ni mantener dos implementaciones.
 - Mantener avisos vigentes por separado: EQW tiene precedencia visual y, al
   vencer, reaparece una RWT todavía vigente.
 - Tratar `NNNN` únicamente como fin del encuadre RF, nunca como orden de apagar.
