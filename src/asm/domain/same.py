@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 
 from asm.domain.indicators import IndicatorState
@@ -32,6 +32,25 @@ class SameHeader:
     @property
     def applies_to_all_units(self) -> bool:
         return "000000" in self.area_codes
+
+
+@dataclass(frozen=True, slots=True)
+class SameNoticeRecord:
+    """Durable wall-clock receipt used to restore validity after a restart."""
+
+    header: SameHeader
+    received_at: datetime
+    expires_at: datetime
+
+    def __post_init__(self) -> None:
+        for field_name, value in (
+            ("received_at", self.received_at),
+            ("expires_at", self.expires_at),
+        ):
+            if value.tzinfo is None or value.utcoffset() is None:
+                raise ValueError(f"{field_name} must be timezone-aware")
+        if self.expires_at <= self.received_at:
+            raise ValueError("expires_at must be later than received_at")
 
 
 @dataclass(frozen=True, slots=True)

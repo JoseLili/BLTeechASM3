@@ -21,6 +21,7 @@ from asm.infrastructure.console import SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
 from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
 from asm.infrastructure.storage.diagnostic_log import JsonLineDiagnosticLog
+from asm.infrastructure.storage.same_notice_history import JsonLineSameNoticeRepository
 
 _RELEASE_ROOT = Path(__file__).resolve().parents[1]
 _TEST_HEADERS = {
@@ -64,6 +65,12 @@ def _parser() -> argparse.ArgumentParser:
         default=Path("/tmp/asm-same-hardware-test.jsonl"),
         help="Separate test log; never defaults to the operational audit log",
     )
+    parser.add_argument(
+        "--notice-history",
+        type=Path,
+        default=Path("/tmp/asm-same-hardware-test-notices.jsonl"),
+        help="Separate test history; never defaults to operational state",
+    )
     return parser
 
 
@@ -99,6 +106,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             display=display,
             audio=audio,
             diagnostic_log=log,
+            notice_history=JsonLineSameNoticeRepository(args.notice_history),
             monotonic=time.monotonic,
             rwt_notice_seconds=DEFAULT_CONFIG.display.rwt_notice_seconds,
             rwt_summary_seconds=DEFAULT_CONFIG.display.rwt_summary_seconds,

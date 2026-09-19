@@ -9,6 +9,7 @@ from asm.application.ports import DiagnosticView, SystemView
 from asm.domain.diagnostics import DiagnosticRecord
 from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
+from asm.domain.same import SameNoticeRecord
 from asm.domain.states import EventType
 
 
@@ -61,6 +62,21 @@ class InMemoryDiagnosticLog:
 
     def append(self, record: DiagnosticRecord) -> None:
         self.records.append(record)
+
+
+@dataclass(slots=True)
+class InMemorySameNoticeRepository:
+    """Keep accepted SAME receipts in newest-last insertion order for tests."""
+
+    records: list[SameNoticeRecord] = field(default_factory=list)
+
+    def append(self, record: SameNoticeRecord) -> None:
+        self.records.append(record)
+
+    def recent(self, *, limit: int) -> tuple[SameNoticeRecord, ...]:
+        if limit <= 0:
+            raise ValueError("limit must be greater than zero")
+        return tuple(reversed(self.records[-limit:]))
 
 
 @dataclass(slots=True)

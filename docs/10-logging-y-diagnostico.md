@@ -1,5 +1,11 @@
 # Logging y diagnóstico
 
+Además de `diagnostics.jsonl`, las cabeceras SAME aceptadas se conservan en
+`notices.jsonl` con recepción y vencimiento UTC. Este segundo archivo permite
+restaurar vigencias y alimentar el historial del menú; no reemplaza la bitácora
+diagnóstica ni vuelve a reproducir audio después de un reinicio. Véase
+[ADR-019](adr/ADR-019-historial-y-restauracion-same.md).
+
 ## Objetivos
 
 `DECIDIDO`: conservar evidencia útil para operación, validación y certificación, aun sin internet. Auditoría, diagnóstico técnico y logs de depuración son flujos distintos aunque puedan compartir almacenamiento.

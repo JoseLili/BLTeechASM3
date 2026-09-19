@@ -34,6 +34,7 @@ from asm.infrastructure.receiver.sa818_serial import Sa818SerialReceiver
 from asm.infrastructure.rtc_health import read_rtc_status
 from asm.infrastructure.storage.channel_config import JsonReceiverChannelRepository
 from asm.infrastructure.storage.diagnostic_log import JsonLineDiagnosticLog
+from asm.infrastructure.storage.same_notice_history import JsonLineSameNoticeRepository
 
 _RELEASE_ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,6 +50,12 @@ def _parser() -> argparse.ArgumentParser:
         "--diagnostic-log",
         type=Path,
         default=Path.home() / ".local/state/asm-blteech/diagnostics.jsonl",
+    )
+    parser.add_argument(
+        "--notice-history",
+        type=Path,
+        default=Path.home() / ".local/state/asm-blteech/notices.jsonl",
+        help="Historial persistente de cabeceras SAME aceptadas",
     )
     parser.add_argument(
         "--oled-controller",
@@ -192,6 +199,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             diagnostic_log=log,
         )
         resources.callback(alert_audio.close)
+        notice_history = JsonLineSameNoticeRepository(args.notice_history)
         same_indicators = SameIndicatorSupervisor(indicators=panel, monotonic=time.monotonic)
         messages = SameMessageService(
             indicators=same_indicators,
@@ -199,11 +207,36 @@ def main(argv: Sequence[str] | None = None) -> int:
             display=display,
             audio=alert_audio,
             diagnostic_log=log,
+            notice_history=notice_history,
             monotonic=time.monotonic,
             rwt_notice_seconds=DEFAULT_CONFIG.display.rwt_notice_seconds,
             rwt_summary_seconds=DEFAULT_CONFIG.display.rwt_summary_seconds,
             standby_after_rwt=args.oled_listen_mode == "standby",
         )
+        try:
+            restored = messages.restore_active(notice_history.recent(limit=1000))
+        except Exception as error:
+            restored = 0
+            _append(
+                log,
+                clock,
+                code="SAME.HISTORY.READ.FAILED",
+                severity=DiagnosticSeverity.WARNING,
+                message="No fue posible restaurar el historial SAME",
+                context=(
+                    ("error_type", type(error).__name__),
+                    ("error", str(error) or type(error).__name__),
+                ),
+            )
+        else:
+            _append(
+                log,
+                clock,
+                code="SAME.HISTORY.RESTORED",
+                severity=DiagnosticSeverity.INFO,
+                message="Vigencias SAME restauradas al arrancar",
+                context=(("active_notices", str(restored)),),
+            )
         menu_buttons: Pcf8574MenuButtons | None = None
 
         def menu_command_received(command: MenuCommand) -> None:
@@ -247,10 +280,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             monotonic=time.monotonic,
         )
         resources.callback(decoder.close)
-        messages.present_idle()
+        messages.request_status(
+            duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds
+        )
+        messages.flush_display()
         time.sleep(DEFAULT_CONFIG.display.idle_notice_seconds)
-        if args.oled_listen_mode == "standby":
-            messages.enter_standby()
+        messages.poll()
+        messages.flush_display()
 
         last_decoder_state: DecoderServiceState | None = None
         print(f"READY channel={channel.value} diagnostics={args.diagnostic_log}", flush=True)

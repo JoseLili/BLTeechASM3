@@ -13,6 +13,7 @@ from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
 from asm.domain.power import PowerStatus
 from asm.domain.receiver import ReceiverChannel, ReceiverConfigurationResult, ReceiverProfile
+from asm.domain.same import SameNoticeRecord
 from asm.domain.states import EventType, SystemState
 
 
@@ -97,6 +98,14 @@ class DiagnosticLogRepository(Protocol):
     """Persist hardware diagnostic records in append-only order."""
 
     def append(self, record: DiagnosticRecord) -> None: ...
+
+
+class SameNoticeRepository(Protocol):
+    """Persist accepted SAME notices and return recent receipts newest first."""
+
+    def append(self, record: SameNoticeRecord) -> None: ...
+
+    def recent(self, *, limit: int) -> tuple[SameNoticeRecord, ...]: ...
 
 
 class ReceiverPort(Protocol):

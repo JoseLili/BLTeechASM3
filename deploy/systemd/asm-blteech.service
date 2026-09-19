@@ -13,7 +13,7 @@ SupplementaryGroups=audio gpio i2c dialout
 WorkingDirectory=/var/lib/asm-blteech
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=/opt/asm-blteech/current/src
-ExecStart=/usr/bin/python3 /opt/asm-blteech/current/scripts/asm_daemon.py --state-file /var/lib/asm-blteech/receiver.json --diagnostic-log /var/lib/asm-blteech/diagnostics.jsonl
+ExecStart=/usr/bin/python3 /opt/asm-blteech/current/scripts/asm_daemon.py --state-file /var/lib/asm-blteech/receiver.json --diagnostic-log /var/lib/asm-blteech/diagnostics.jsonl --notice-history /var/lib/asm-blteech/notices.jsonl
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=10

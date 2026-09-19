@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from dataclasses import replace
+from datetime import timedelta
 
 from asm.application.ports import (
     ClockPort,
     DiagnosticLogRepository,
     DisplayPort,
     EventAudioPort,
+    SameNoticeRepository,
     SystemView,
 )
 from asm.application.same_indicator_supervisor import (
@@ -21,6 +24,7 @@ from asm.domain.same import (
     SameEventCode,
     SameHeader,
     SameIndicatorSnapshot,
+    SameNoticeRecord,
     SameParseError,
     parse_multimon_same_line,
 )
@@ -40,6 +44,7 @@ class SameMessageService:
         display: DisplayPort,
         audio: EventAudioPort,
         diagnostic_log: DiagnosticLogRepository,
+        notice_history: SameNoticeRepository,
         monotonic: Callable[[], float],
         rwt_notice_seconds: float,
         rwt_summary_seconds: float,
@@ -54,6 +59,7 @@ class SameMessageService:
         self._display = display
         self._audio = audio
         self._diagnostic_log = diagnostic_log
+        self._notice_history = notice_history
         self._monotonic = monotonic
         self._rwt_notice_seconds = rwt_notice_seconds
         self._rwt_summary_seconds = rwt_summary_seconds
@@ -104,6 +110,35 @@ class SameMessageService:
         self._status_deadline = self._monotonic() + duration_seconds
         self._present_if_changed()
 
+    def restore_active(self, records: Sequence[SameNoticeRecord]) -> int:
+        """Restore the latest unexpired notice per event without replaying audio."""
+        now = self._clock.now()
+        latest: dict[SameEventCode, SameNoticeRecord] = {}
+        for record in records:
+            if record.expires_at <= now:
+                continue
+            current = latest.get(record.header.event)
+            if current is None or record.received_at > current.received_at:
+                latest[record.header.event] = record
+
+        for record in sorted(latest.values(), key=lambda item: item.received_at):
+            remaining = record.expires_at - now
+            restored_header = replace(
+                record.header,
+                validity=timedelta(seconds=remaining.total_seconds()),
+            )
+            self._indicators.track_header(restored_header)
+
+        if not latest:
+            return 0
+        snapshot = self._indicators.snapshot()
+        self._audio_event = snapshot.event
+        self._notice_event = snapshot.event
+        self._notice_deadline = None
+        self._summary_deadline = None
+        self._indicators.apply_snapshot(snapshot)
+        return len(latest)
+
     def consume(self, line: str) -> SameLineOutcome:
         try:
             decoded = parse_multimon_same_line(line)
@@ -129,6 +164,8 @@ class SameMessageService:
         outcome = self._indicators.track_header(decoded)
         snapshot = self._indicators.snapshot()
         self._start_audio_if_changed(snapshot)
+        if outcome is SameLineOutcome.ACCEPTED:
+            self._persist_header(decoded)
         self._log_header(decoded, outcome)
         self._indicators.apply_snapshot(snapshot)
         self._present_if_changed(snapshot)
@@ -315,6 +352,28 @@ class SameMessageService:
                 ("sender", header.sender),
             ),
         )
+
+    def _persist_header(self, header: SameHeader) -> None:
+        received_at = self._clock.now()
+        try:
+            self._notice_history.append(
+                SameNoticeRecord(
+                    header=header,
+                    received_at=received_at,
+                    expires_at=received_at + header.validity,
+                )
+            )
+        except Exception as error:
+            self._append(
+                code="SAME.HISTORY.WRITE.FAILED",
+                severity=DiagnosticSeverity.WARNING,
+                message="No fue posible persistir el aviso; la recepcion continua",
+                context=(
+                    ("event", header.event.value),
+                    ("error_type", type(error).__name__),
+                    ("error", str(error) or type(error).__name__),
+                ),
+            )
 
     def _append(
         self,

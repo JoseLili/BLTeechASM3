@@ -16,6 +16,7 @@ from asm.infrastructure.fakes import (
     InMemoryDisplay,
     InMemoryEventAudio,
     InMemoryIndicatorPanel,
+    InMemorySameNoticeRepository,
 )
 
 
@@ -35,12 +36,17 @@ class FailingDisplay:
         raise OSError(5, "Input/output error")
 
 
-def _service(*, standby_after_rwt: bool = True):  # type: ignore[no-untyped-def]
+def _service(
+    *,
+    standby_after_rwt: bool = True,
+    history: InMemorySameNoticeRepository | None = None,
+):  # type: ignore[no-untyped-def]
     monotonic = ManualMonotonic()
     panel = InMemoryIndicatorPanel()
     display = InMemoryDisplay()
     log = InMemoryDiagnosticLog()
     audio = InMemoryEventAudio()
+    history = history or InMemorySameNoticeRepository()
     indicators = SameIndicatorSupervisor(indicators=panel, monotonic=monotonic)
     service = SameMessageService(
         indicators=indicators,
@@ -48,6 +54,7 @@ def _service(*, standby_after_rwt: bool = True):  # type: ignore[no-untyped-def]
         display=display,
         audio=audio,
         diagnostic_log=log,
+        notice_history=history,
         monotonic=monotonic,
         rwt_notice_seconds=8.0,
         rwt_summary_seconds=5.0,
@@ -72,6 +79,22 @@ def test_accepted_rwt_is_logged_presented_and_indicated() -> None:
     header_record = next(record for record in log.records if record.code == "SAME.HEADER.ACCEPTED")
     assert dict(header_record.context)["issued_code"] == "832300"
     assert dict(header_record.context)["sender"] == "XDIF/005"
+
+
+def test_accepted_notice_is_persisted_and_restored_without_replaying_audio() -> None:
+    history = InMemorySameNoticeRepository()
+    service, _monotonic, _panel, _display, _audio, _log = _service(history=history)
+    service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
+    assert len(history.records) == 1
+
+    restored, _clock, panel, display, audio, _restored_log = _service()
+    assert restored.restore_active(history.recent(limit=10)) == 1
+    restored.request_status(duration_seconds=10.0)
+    restored.flush_display()
+
+    assert panel.history[-1] == IndicatorState(advisory=True, power=True)
+    assert display.history[-1].footer == "RWT vigente 180m"
+    assert audio.played == []
 
 
 def test_end_marker_is_logged_without_ending_validity() -> None:
@@ -206,6 +229,7 @@ def test_confirmed_same_starts_audio_before_led_and_display() -> None:
         display=OrderedDisplay(),  # type: ignore[arg-type]
         audio=OrderedAudio(),
         diagnostic_log=InMemoryDiagnosticLog(),
+        notice_history=InMemorySameNoticeRepository(),
         monotonic=monotonic,
         rwt_notice_seconds=8.0,
         rwt_summary_seconds=5.0,
@@ -255,6 +279,7 @@ def test_display_failure_is_logged_without_losing_accepted_header() -> None:
         display=FailingDisplay(),
         audio=audio,
         diagnostic_log=log,
+        notice_history=InMemorySameNoticeRepository(),
         monotonic=monotonic,
         rwt_notice_seconds=8.0,
         rwt_summary_seconds=5.0,
