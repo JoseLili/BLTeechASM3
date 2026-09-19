@@ -11,6 +11,7 @@ from pathlib import Path
 
 from asm.application.decoder_supervisor import DecoderServiceState, DecoderSupervisor
 from asm.application.event_audio import EventAudioService
+from asm.application.menu_input import MenuCommand
 from asm.application.ports import SystemView
 from asm.application.receiver_service import ReceiverError, ReceiverService
 from asm.application.same_indicator_supervisor import SameIndicatorSupervisor
@@ -28,6 +29,7 @@ from asm.infrastructure.display.luma_oled import LumaOledDisplay
 from asm.infrastructure.display.null_display import NullDisplay
 from asm.infrastructure.display.startup_animation import StartupAnimator
 from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
+from asm.infrastructure.i2c.pcf8574_menu_buttons import Pcf8574MenuButtons
 from asm.infrastructure.receiver.sa818_serial import Sa818SerialReceiver
 from asm.infrastructure.rtc_health import read_rtc_status
 from asm.infrastructure.storage.channel_config import JsonReceiverChannelRepository
@@ -202,6 +204,41 @@ def main(argv: Sequence[str] | None = None) -> int:
             rwt_summary_seconds=DEFAULT_CONFIG.display.rwt_summary_seconds,
             standby_after_rwt=args.oled_listen_mode == "standby",
         )
+        menu_buttons: Pcf8574MenuButtons | None = None
+
+        def menu_command_received(command: MenuCommand) -> None:
+            if command is not MenuCommand.CONFIRM:
+                return
+            messages.request_status(
+                duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds
+            )
+            _append(
+                log,
+                clock,
+                code="DISPLAY.WAKE.REQUESTED",
+                severity=DiagnosticSeverity.INFO,
+                message="Consulta de estado solicitada con el boton Enter",
+            )
+
+        try:
+            menu_buttons = Pcf8574MenuButtons.open(
+                on_command=menu_command_received,
+                debounce_seconds=DEFAULT_CONFIG.menu_buttons.debounce_seconds,
+            )
+        except Exception as error:
+            _append(
+                log,
+                clock,
+                code="MENU.INPUT.UNAVAILABLE",
+                severity=DiagnosticSeverity.WARNING,
+                message="Los botones de menu no estan disponibles; la recepcion continua",
+                context=(
+                    ("error_type", type(error).__name__),
+                    ("error", str(error) or type(error).__name__),
+                ),
+            )
+        else:
+            resources.callback(menu_buttons.close)
         decoder = DecoderSupervisor(
             stream_factory=lambda: MultimonSameStream(
                 config=DEFAULT_CONFIG.audio,
@@ -249,6 +286,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                 outcome = messages.consume(line)
                 if outcome.value not in ("IGNORED",):
                     print(f"SAME outcome={outcome.value} line={line}", flush=True)
+            if menu_buttons is not None:
+                try:
+                    menu_buttons.poll()
+                except Exception as error:
+                    _append(
+                        log,
+                        clock,
+                        code="MENU.INPUT.FAILED",
+                        severity=DiagnosticSeverity.WARNING,
+                        message="Fallo la lectura del teclado; la recepcion continua",
+                        context=(
+                            ("error_type", type(error).__name__),
+                            ("error", str(error) or type(error).__name__),
+                        ),
+                    )
+                    menu_buttons.close()
+                    menu_buttons = None
             messages.poll()
             if messages.display_update_pending:
                 _append(

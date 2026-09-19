@@ -63,6 +63,7 @@ class SameMessageService:
         self._notice_event: SameEventCode | None = None
         self._notice_deadline: float | None = None
         self._summary_deadline: float | None = None
+        self._status_deadline: float | None = None
         self._attempted_display: tuple[SameEventCode | None, str] | object = _UNSET
         self._pending_display: tuple[SameEventCode | None, SystemView | None, bool] | None = None
 
@@ -95,6 +96,13 @@ class SameMessageService:
             phase="standby",
         )
         self.flush_display()
+
+    def request_status(self, *, duration_seconds: float) -> None:
+        """Wake a standby display temporarily without changing notice validity."""
+        if duration_seconds <= 0:
+            raise ValueError("duration_seconds must be greater than zero")
+        self._status_deadline = self._monotonic() + duration_seconds
+        self._present_if_changed()
 
     def consume(self, line: str) -> SameLineOutcome:
         try:
@@ -186,6 +194,9 @@ class SameMessageService:
         if snapshot is None:
             snapshot = self._indicators.poll()
         now = self._monotonic()
+        status_requested = self._status_deadline is not None and now < self._status_deadline
+        if self._status_deadline is not None and not status_requested:
+            self._status_deadline = None
         if snapshot.event is not self._notice_event:
             self._notice_event = snapshot.event
             self._notice_deadline = (
@@ -199,7 +210,11 @@ class SameMessageService:
                 else None
             )
 
-        if snapshot.event is None:
+        if status_requested and snapshot.event is None:
+            phase = "idle"
+        elif status_requested and snapshot.event is SameEventCode.RWT:
+            phase = "summary"
+        elif snapshot.event is None:
             phase = "standby" if self._standby_after_rwt else "idle"
         elif snapshot.event is SameEventCode.EQW or (
             self._notice_deadline is not None and now < self._notice_deadline

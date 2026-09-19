@@ -39,6 +39,9 @@ por fecha juliana o emisor.
   con la OLED grande, ponerla en standby antes de iniciar la captura continua.
   Permitir modo `continuous` para la OLED pequeña validada, sin cambiar lógica
   de eventos ni mantener dos implementaciones.
+- En modo standby, usar el botón `Enter` del teclado PCF8574 para mostrar el
+  estado y la vigencia durante diez segundos; la consulta no reinicia vigencias
+  ni detiene permanentemente el decoder.
 - Mantener avisos vigentes por separado: EQW tiene precedencia visual y, al
   vencer, reaparece una RWT todavía vigente.
 - Tratar `NNNN` únicamente como fin del encuadre RF, nunca como orden de apagar.

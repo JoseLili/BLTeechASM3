@@ -150,6 +150,27 @@ def test_continuous_display_keeps_rwt_validity_summary_visible() -> None:
     assert display.standby_calls == 0
 
 
+def test_enter_status_request_temporarily_wakes_standby_rwt_summary() -> None:
+    service, monotonic, _panel, display, _audio, _log = _service()
+    service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
+    service.flush_display()
+    monotonic.current = 13.0
+    service.poll()
+    service.flush_display()
+    assert display.standby_calls == 1
+
+    service.request_status(duration_seconds=10.0)
+    service.flush_display()
+
+    assert display.history[-1].title == "Esperando evento"
+    assert display.history[-1].footer == "RWT vigente 180m"
+
+    monotonic.current = 23.0
+    service.poll()
+    service.flush_display()
+    assert display.standby_calls == 2
+
+
 def test_confirmed_same_starts_audio_before_led_and_display() -> None:
     trace: list[str] = []
 
