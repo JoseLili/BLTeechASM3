@@ -9,12 +9,20 @@ Estructura inicial implementada:
 ```text
 SystemConfig
 ├── BrandingConfig
-│   ├── company_name
-│   ├── product_name
-│   ├── generation
-│   └── startup_text
-└── DisplayConfig
-    └── startup_animation_seconds
+├── DisplayConfig
+├── ButtonInputConfig
+├── MenuButtonInputConfig
+├── PowerMonitoringConfig
+├── AudioConfig
+│   ├── card_name / pcm_device / preload_service
+│   ├── capture_spec: S32_LE, 48000 Hz, 2 canales
+│   ├── radio_capture_channel: 1 (derecho)
+│   └── decoder_spec: S16_LE, 22050 Hz, mono
+└── ReceiverConfig
+    ├── channel
+    ├── serial_device
+    ├── command_timeout_seconds
+    └── startup_settle_seconds
 ```
 
 `VALIDADO` mediante pruebas: los textos obligatorios no aceptan valores vacíos y la animación solo admite más de cero y hasta diez segundos. El valor de fábrica actual es cinco segundos.
@@ -33,7 +41,11 @@ valores de fábrica → configuración del equipo → configuración del sitio
 
 Una configuración externa inválida deberá impedir su aplicación, conservar la última configuración válida y generar diagnóstico. No existe todavía un loader YAML ni se ha decidido su ubicación definitiva; `/etc/asm-blteech/config.yaml` permanece `PROPUESTO`.
 
-`PENDIENTE`: agregar secciones tipadas para textos por estado y recursos de audio cuando existan consumidores implementados. No se crearán campos sin uso solamente para anticipar código futuro.
+`IMPLEMENTADO`: la identidad ALSA y los dos perfiles PCM están tipados e
+inmutables en `AudioConfig`; salud, captura diagnóstica y reproducción ya los
+consumen. `PENDIENTE`: agregar catálogo de textos por estado y rutas de recursos
+de audio cuando existan esos consumidores. No se crearán campos sin uso
+solamente para anticipar código futuro.
 
 ## Política configurable de botones
 
@@ -58,14 +70,36 @@ La futura configuración externa deberá auditar cualquier cambio de modo o dura
 
 ## Acceso
 
-`PROPUESTO`: solo desde `IDLE`, sin evento activo, mediante pulsación larga de Simulacro + Paro. Un EQW válido interrumpe el menú inmediatamente.
+`DECIDIDO`: Carrier v3.1 Rev A tiene siete botones dedicados de configuración
+conectados al PCF8574P en `0x20`. El acceso y navegación del menú no reutilizan
+los botones operativos. Un EQW válido interrumpe el menú inmediatamente.
 
-| Botón | Función técnica |
+| Botón dedicado | Comando semántico inicial |
 |---|---|
-| Simulacro | anterior/disminuir |
-| Evacuación | siguiente/aumentar |
-| Paro corto | confirmar |
-| Paro largo | regresar/cancelar |
+| Arriba | `MOVE_UP` |
+| Abajo | `MOVE_DOWN` |
+| Izquierda | `MOVE_LEFT` |
+| Derecha | `MOVE_RIGHT` |
+| Enter | `CONFIRM` |
+| Regresar | `GO_BACK` |
+| Escucha | `TOGGLE_LISTEN` |
+
+`DECIDIDO`: Arriba/Abajo/Izquierda/Derecha, Enter y Regresar pertenecen al
+controlador de menús. Escucha conmuta la rama de monitor local y nunca altera
+la señal entregada al decoder SAME.
+
+`IMPLEMENTADO`: navegación OLED inicial con menú raíz para Recepción, Audio,
+Diagnóstico, Sistema e Información, submenús, cursor desplazable, Enter,
+Regresar y acción global de Escucha.
+
+`IMPLEMENTADO`: la hoja `Recepción → Canal C1-C7` abre un editor limitado a los
+siete canales congelados. Arriba/Abajo recorren la lista; el primer Enter aplica
+el perfil temporal y exige readback del SA818; el segundo Enter guarda. Regresar
+antes de aplicar sale sin cambios y, después de verificar, restaura el canal
+confirmado anterior. Escucha conserva su acción global durante la edición.
+
+`PENDIENTE`: conectar las demás hojas con ajustes reales y definir el timeout
+general del menú de producción.
 
 ## Cambio transaccional de canal
 
@@ -75,6 +109,13 @@ seleccionar C1–C7 → aplicar temporalmente → verificar receptor
 ```
 
 `DECIDIDO`: la frecuencia se deriva del canal. `PROPUESTO`: la configuración persistida incluye versión de esquema, sitio/región, canal, squelch e identidad/revisiones de hardware; los valores desconocidos permanecen explícitos.
+
+`IMPLEMENTADO`: C7 es el valor de fábrica y produce 162.5500 MHz sin almacenar
+una frecuencia independiente. `ReceiverService` sólo acepta un cambio cuando
+el adaptador devuelve el mismo perfil como verificado. El canal confirmado se
+escribe atómicamente como JSON versionado; nunca se persiste una frecuencia
+separada. El diagnóstico usa por defecto
+`~/.local/state/asm-blteech/receiver.json`.
 
 ## Reglas de persistencia
 

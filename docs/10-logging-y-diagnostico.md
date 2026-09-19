@@ -22,13 +22,48 @@
 
 `PROPUESTO`: una escritura fallida genera diagnóstico visible y usa un buffer acotado, sin bloquear la atención de EQW. `PENDIENTE`: política exacta ante medio lleno/corrupto, retención, integridad criptográfica y exportación.
 
+## Implementación actual
+
+`IMPLEMENTADO`: el daemon receptor escribe su diagnóstico de producción en
+`/var/lib/asm-blteech/diagnostics.jsonl`. Registra la salud del RTC, la
+configuración verificada del receptor, inicio/reinicio del decoder, cada línea
+SAME relevante, decisiones aceptadas/duplicadas/rechazadas, cambios del aviso y
+apagado ordenado. Cada append se vacía con `fsync`.
+
+`IMPLEMENTADO`: los cambios estables de las cinco entradas Mean Well se
+persisten en `~/.local/state/asm-blteech/diagnostics.jsonl`. Cada línea contiene
+timestamp ISO 8601, componente, código estable, severidad, mensaje y contexto
+`signal/previous/current`. Cada append se vacía con `fsync` para reducir la
+pérdida ante un corte abrupto.
+
+Este flujo es distinto de `AuditRecord`: observar un cambio eléctrico no
+equivale a aceptar una transición de la máquina de estados. La rotación,
+retención, tolerancia a disco lleno y señalización de error de escritura siguen
+pendientes antes de producción.
+
+`IMPLEMENTADO`: `JsonLineAuditLog` conserva también decisiones operativas
+aceptadas y rechazadas, incluida su procedencia. La demo de panel utiliza
+`~/.local/state/asm-blteech/demo-audit.jsonl` deliberadamente separado de una
+futura bitácora de producción y aplica `fsync` después de cada decisión.
+
 ## Catálogos pendientes
 
-Se requieren códigos estables, severidades, política de deduplicación/rate limiting y matriz que determine qué diagnósticos exigen `MAINTENANCE_REQUIRED`.
+Ya existe el catálogo estable `POWER.<SEÑAL>.<ESTADO>` para esta primera fuente.
+Siguen pendientes códigos para otros componentes, política general de
+deduplicación/rate limiting y la matriz que determine qué diagnósticos exigen
+`MAINTENANCE_REQUIRED`.
 
 ## Estado del reloj de la unidad de pruebas
 
-`VALIDADO`: la Raspberry Pi expone el RTC I²C `0x68` como `/dev/rtc0`. `PENDIENTE`: durante la primera ejecución el reloj del sistema no estaba sincronizado, NTP estaba inactivo y el RTC reportaba el año 2000. Hasta configurar y validar recuperación tras corte de energía, los timestamps generados por esa unidad no constituyen evidencia temporal confiable.
+`VALIDADO` el 2026-09-11: el HW-084 en I²C `0x68` está expuesto como
+`/dev/rtc0`, con nombre de kernel `rtc-ds1307 1-0068`. El sistema reportó
+`hctosys=1`, NTP sincronizado y coincidencia entre RTC y hora civil UTC.
+
+Al conectarlo en caliente, el primer registro del kernel todavía mostró el año
+2000 y después NTP corrigió tanto sistema como RTC. Por ello el daemon registra
+explícitamente `RTC.READY` o `RTC.DEGRADED` en cada arranque. Sigue pendiente
+una prueba de corte y reenergización con el HW-084 conectado desde el inicio
+para cerrar la evidencia de retención temporal sin red.
 
 ## Supervisión y watchdogs
 
@@ -40,7 +75,12 @@ Se separan responsabilidades:
 - **Salud de adaptadores:** receptor, audio, display, almacenamiento, energía y reloj reportan fallas semánticas.
 - **Recuperación:** cada reinicio y decisión posterior queda auditado.
 
-`PENDIENTE`: elegir supervisor de producción, intervalo de heartbeat, política de reinicio, límites de reinicios y recuperación de eventos activos mediante ADR.
+`IMPLEMENTADO`: systemd supervisa el daemon receptor y lo reinicia tres segundos
+después de una salida con error. El pipeline SAME aplica además backoff
+exponencial acotado entre uno y treinta segundos.
+
+`PENDIENTE`: watchdog de progreso, límites de reinicios, rotación/retención y
+recuperación de vigencias SAME activas después de reiniciar.
 
 ## Relacionados
 

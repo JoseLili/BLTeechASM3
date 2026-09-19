@@ -67,7 +67,7 @@ Placa de dos capas conectada a la Raspberry Pi mediante header de 40 pines. Inte
 - Entrada de energía desde Mean Well LAD-120A.
 - Conversión a 5 V para Raspberry Pi mediante Mini560.
 - Tres botones de panel.
-- Tres LEDs indicadores.
+- Cuatro LEDs indicadores.
 - Bus I²C para OLED, RTC y EEPROM.
 - Entradas aisladas mediante PC817 para estados de Mean Well.
 - Borneras y conexiones robustas hacia el gabinete.
@@ -118,6 +118,7 @@ Los LEDs se consideran activos en alto mediante resistencia serie de 220–330 �
 | Verde | GPIO23 | 16 | Espera / sistema operativo |
 | Ámbar | GPIO24 | 18 | Simulacro / evacuación / advisory |
 | Rojo | GPIO25 | 22 | Alerta sísmica / falla / paro |
+| Energía | GPIO4 | 7 | Estado de alimentación |
 
 La semántica definitiva de cada LED debe congelarse antes de producción.
 
@@ -146,7 +147,8 @@ Debe existir un único diseño consciente de pull-ups. Los módulos I²C pueden 
 | AC OK / AC FAIL | GPIO5 | 29 |
 | Estado de carga / batería llena | GPIO6 | 31 |
 | Batería desconectada o invertida | GPIO13 | 33 |
-| Batería baja / normal | GPIO19 | 35 |
+| Batería baja / normal | GPIO26 | 37 |
+| Descarga / operación desde batería | GPIO12 | 32 |
 
 Estas señales pasan por optoacopladores PC817. El software deberá separar:
 
@@ -205,11 +207,12 @@ Los pines 7 y 8 son una entrada de control y no una salida de estado.
 - [VALIDADO] Ruta básica entrada → PC817 → GPIO en pruebas con jumper.
 - [PENDIENTE] Prueba con una LAD-120A real.
 - [PENDIENTE] Medición de niveles y tiempos de transición reales.
-- [PENDIENTE] Confirmación de polaridad post-opto de cada GPIO.
-- [PENDIENTE] Definir el GPIO de `Discharge` si la quinta entrada PC817 está efectivamente ruteada.
-- [PENDIENTE] Verificar la correspondencia exacta entre CN2-5 y GPIO6.
+- [DECIDIDO] En Carrier v3.1 Rev A la salida PC817 activa lleva el GPIO a LOW.
+- [DECIDIDO] `Discharge` corresponde a GPIO12 y batería baja a GPIO26.
+- [PENDIENTE] Validar condiciones y tiempos con una LAD-120A real.
 
-El archivo de inventario actual asigna cuatro señales Mean Well a GPIO, mientras que la arquitectura de carrier contempla cinco estados. Esta diferencia no debe resolverse inventando un GPIO; debe verificarse en el esquemático y la PCB.
+El mapa de cinco señales de Carrier v3.1 Rev A reemplaza el inventario
+preliminar de cuatro GPIO.
 
 ## Lógica de botones
 
@@ -374,20 +377,31 @@ La documentación debe distinguir:
 - Cuatro de cinco optoacopladores respondieron en pruebas.
 - Pinout físico de CN2 identificado.
 - Ruta de señales opto–GPIO probada con jumper.
+- SA818S-V configurado por UART y ruta real SA818S-V → WM8960 → GOLD →
+  `multimon-ng` decodificando una RWT.
+- WM8960 enumerado para captura y el jack `Headphones` de la Pi separado para
+  reproducción WAV interrumpible; ambos streams operaron simultáneamente.
+- Catálogo `rwt.wav`, `eqw.wav`, `simulacro.wav` y `evacuacion.wav`, con orden
+  audio → LED → OLED, preempción por prioridad y fallas auditables no fatales.
+- Parser `CIV-RWT`/`CIV-EQW` y supervisor de vigencia `TTTT` con parpadeo
+  AVISO/amarillo o ALERTA/rojo, sin depender de fecha juliana ni emisor.
+- Daemon receptor con BOOT OLED, verificación C1-C7, cadena continua
+  `arecord → SoX → multimon-ng`, reinicio con backoff y unidad systemd.
+- HW-084/DS3231 expuesto como `/dev/rtc0`; el kernel inicializa la hora civil y
+  el daemon conserva evidencia RTC en el log de arranque.
 
 ### Pendiente
 
 - Reemplazar U7 dañado por calor.
 - Probar con LAD-120A real.
-- Resolver el mapeo de la quinta señal Mean Well (`Discharge`).
 - Diseñar ASM-RX-SA818S v0.1.
 - Diseñar ASM-RX-DRA818V v0.1.
 - Comparar receptores.
-- Definir interfaz de audio final.
 - Definir enlace final de control con ASM-RX.
 - Congelar semántica de LEDs.
-- Implementar software greenfield.
-- Crear pruebas de negocio y simuladores de hardware.
+- Integrar botones, menú y Mean Well en el daemon único.
+- Cargar y validar acústicamente los cuatro WAV operativos definitivos.
+- Persistir vigencias activas y añadir watchdog de progreso.
 
 ## Documentación prevista
 

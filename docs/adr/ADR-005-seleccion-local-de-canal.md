@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado conceptualmente (`DECIDIDO`); interacción exacta `PROPUESTO`.
+Aceptado e implementado para el menú OLED de Carrier v3.1 Rev A.
 
 ## Contexto
 
@@ -10,7 +10,10 @@ El equipo opera sin internet y debe configurarse entre C1–C7 durante instalaci
 
 ## Decisión
 
-Ofrecer modo técnico local solo en espera y sin evento. Aplicar el canal temporalmente, verificar el receptor y persistirlo solo tras confirmación. EQW interrumpe el menú.
+Ofrecer modo técnico local solo en espera y sin evento. Los botones dedicados
+Arriba/Abajo seleccionan exclusivamente C1–C7. El primer Enter aplica el canal
+temporalmente y verifica el SA818; el segundo Enter lo persiste. Regresar
+restaura el canal confirmado. EQW interrumpe el menú.
 
 ## Consecuencias positivas
 
@@ -19,7 +22,6 @@ Ofrecer modo técnico local solo en espera y sin evento. Aplicar el canal tempor
 
 ## Consecuencias negativas
 
-- Combinaciones de tres botones pueden ser menos descubribles.
 - Requiere debounce, timeouts, rollback y auditoría cuidadosos.
 
 ## Alternativas consideradas
@@ -30,4 +32,5 @@ Ofrecer modo técnico local solo en espera y sin evento. Aplicar el canal tempor
 
 ## Puntos pendientes
 
-Umbrales de pulsación, timeout, autenticación, valores iniciales, squelch y definición de verificación exitosa.
+Integrar la preempción EQW en la composición de producción, definir timeout y
+autenticación del modo técnico, y auditar cada confirmación persistente.

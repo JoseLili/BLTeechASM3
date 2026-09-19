@@ -23,9 +23,20 @@ class SystemState(StrEnum):
 
 
 class EventType(StrEnum):
-    """Inputs supported by the first executable state-machine slice."""
+    """Operational inputs supported by the executable priority slice."""
 
     BOOT_COMPLETED = "BOOT_COMPLETED"
     SELF_TEST_PASSED = "SELF_TEST_PASSED"
+    START_RWT = "START_RWT"
     START_SIMULACRO = "START_SIMULACRO"
+    START_EVACUACION = "START_EVACUACION"
+    START_EQW = "START_EQW"
     STOP_REQUESTED = "STOP_REQUESTED"
+
+
+class EventSource(StrEnum):
+    """Origin retained in audit evidence after semantic normalization."""
+
+    SYSTEM = "SYSTEM"
+    LOCAL_PANEL = "LOCAL_PANEL"
+    RADIO = "RADIO"

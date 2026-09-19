@@ -12,7 +12,8 @@
 
 ### Común
 
-El paquete `asm-blteech` no tiene dependencias de ejecución todavía. Modelos, reglas, fakes y simulación deben permanecer en este perfil.
+El paquete `asm-blteech` no añade dependencias Python de ejecución todavía.
+Modelos, reglas, fakes y simulación deben permanecer en este perfil.
 
 ### Desarrollo
 
@@ -39,7 +40,35 @@ uname -m
 python3 scripts/environment_report.py
 ```
 
-En la Pi se crea `.venv` y se instala el mismo paquete. Las dependencias exclusivas de hardware se definirán en un extra separado y mediante ADR; no formarán parte del núcleo.
+En la Pi se crea `.venv` y se instala el mismo paquete. Las dependencias
+exclusivas de hardware se definirán en un extra separado y mediante ADR; no
+formarán parte del núcleo. Los adaptadores de audio actuales usan la biblioteca
+estándar de Python y herramientas del sistema operativo:
+
+- `/usr/bin/arecord` y `/usr/bin/aplay` para ALSA;
+- `wm8960-audio-board-preload.service` activo antes de abrir streams;
+- `sox` para la conversión GOLD reproducible en pruebas;
+- `multimon-ng` para la demodulación SAME/EAS de laboratorio.
+
+`sox` y `multimon-ng` no son dependencias del dominio ni de los diagnósticos
+básicos; son dependencias externas del daemon receptor desplegado en la Pi.
+
+## Servicio de arranque
+
+`asm-blteech.service` inicia automáticamente después de que estén disponibles
+el sistema de archivos, ALSA y la precarga WM8960. Inspecciona el RTC sin
+bloquear la recepción si éste falta, ejecuta BOOT en OLED, verifica el canal
+C1-C7 del SA818, abre el pipeline continuo SAME y se reinicia si el proceso
+falla.
+
+```bash
+sudo systemctl status asm-blteech.service
+sudo journalctl -u asm-blteech.service -f
+sudo tail -f /var/lib/asm-blteech/diagnostics.jsonl
+```
+
+Cada despliegue se extrae en `/opt/asm-blteech/releases/<commit>` y el enlace
+`/opt/asm-blteech/current` apunta a la versión activa.
 
 ## Flujo de trabajo
 
@@ -60,14 +89,20 @@ No deben versionarse `.venv`, caches, builds ni reportes locales. Las versiones 
 - `VALIDADO`: Raspberry Pi 4 Model B Rev 1.5.
 - `VALIDADO`: Debian GNU/Linux 13 (Trixie), `aarch64`, Python 3.13.5.
 - `VALIDADO`: existen `/dev/i2c-1`, `/dev/i2c-20` y `/dev/i2c-21`.
+- `VALIDADO`: ALSA expone `wm8960soundcard` dispositivo 0 para captura y salida;
+  una captura real desde RINPUT1 derecho y una reproducción silenciosa
+  finalizaron correctamente.
 - `VALIDADO`: el RTC en I²C-1 dirección `0x68` está expuesto como `/dev/rtc0` mediante el driver `rtc-ds1307`.
 - `VALIDADO`: la partición raíz tiene 22 GB disponibles durante el inventario inicial.
 - `PENDIENTE`: definir política de retención y umbrales de almacenamiento.
-- `PENDIENTE`: `i2c-tools` no está instalado; no es requisito del núcleo y se añadirá solo al preparar pruebas HIL.
+- `VALIDADO`: `i2c-tools` está disponible y `i2cdetect -y 1` mostró PCF8574P
+  `0x20`, OLED `0x3C`, EEPROM `0x57` y RTC ocupado por el kernel en `0x68`.
 - Modelo de OLED y resolución física.
 - Resultado de detección I²C y direcciones observadas.
 - `VALIDADO`: el usuario `blteech` tiene grupos de acceso a GPIO/I²C/SPI; falta una prueba funcional no destructiva.
-- `PENDIENTE`: el reloj del sistema no está sincronizado, NTP está inactivo y el RTC reportó el año 2000 durante el inventario; no debe usarse aún como evidencia temporal.
+- `VALIDADO` el 2026-09-11: RTC y sistema coincidieron, NTP estaba sincronizado y
+  el driver reportó `hctosys=1`. Queda pendiente validar retención mediante un
+  corte real con el HW-084 conectado desde el arranque.
 - Revisión de carrier conectada; no conectar LAD-120A hasta tener procedimiento de validación.
 
 ## Relacionados

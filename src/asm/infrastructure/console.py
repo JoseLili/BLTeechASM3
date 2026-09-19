@@ -7,7 +7,9 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import TextIO
 
-from asm.application.ports import SystemView
+from asm.application.ports import DiagnosticView, SystemView
+from asm.domain.diagnostics import DiagnosticRecord
+from asm.domain.indicators import Indicator, IndicatorState
 from asm.domain.models import AuditRecord
 
 
@@ -27,6 +29,21 @@ class ConsoleDisplay:
     def show(self, view: SystemView) -> None:
         print(f"[DISPLAY] {view.state}: {view.title} — {view.detail}", file=self._stream)
 
+    def show_diagnostic(self, view: DiagnosticView) -> None:
+        detail = " | ".join(view.lines)
+        print(f"[DIAGNOSTIC] {view.severity}: {view.title} — {detail}", file=self._stream)
+
+
+class ConsoleIndicatorPanel:
+    """Show the complete indicator state in the hardware-free demo."""
+
+    def __init__(self, stream: TextIO) -> None:
+        self._stream = stream
+
+    def apply(self, state: IndicatorState) -> None:
+        active = [indicator.value for indicator in Indicator if state.is_on(indicator)]
+        print(f"[LEDS] {','.join(active) or 'ALL_OFF'}", file=self._stream)
+
 
 class JsonLineEventLog:
     """Write structured audit records as JSON lines."""
@@ -35,4 +52,14 @@ class JsonLineEventLog:
         self._stream = stream
 
     def append(self, record: AuditRecord) -> None:
+        print(json.dumps(asdict(record), default=str, ensure_ascii=False), file=self._stream)
+
+
+class JsonLineDiagnosticStream:
+    """Write diagnostic records to a stream for simulation."""
+
+    def __init__(self, stream: TextIO) -> None:
+        self._stream = stream
+
+    def append(self, record: DiagnosticRecord) -> None:
         print(json.dumps(asdict(record), default=str, ensure_ascii=False), file=self._stream)

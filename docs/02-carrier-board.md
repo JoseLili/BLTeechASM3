@@ -20,7 +20,6 @@ El inventario eléctrico autoritativo se registra en [interfaces de hardware](07
 ## Preguntas abiertas
 
 - ¿Qué revisión exacta tienen las cinco placas y dónde están sus esquemáticos/BOM/Gerber controlados?
-- ¿Cuál PC817 corresponde a `Discharge` y a qué GPIO llega, si está ruteado?
 - ¿Qué pull-ups I²C están poblados y cuál es la resistencia equivalente?
 - ¿Qué pruebas térmicas, EMC, consumo y protección se requieren?
 

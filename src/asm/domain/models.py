@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from asm.domain.states import EventType, SystemState
+from asm.domain.states import EventSource, EventType, SystemState
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,6 +14,7 @@ class AuditRecord:
 
     occurred_at: datetime
     event: EventType
+    source: EventSource
     previous_state: SystemState
     resulting_state: SystemState | None
     accepted: bool

@@ -2,16 +2,28 @@
 
 from __future__ import annotations
 
-from asm.application.ports import ClockPort, DisplayPort, EventLogRepository, SystemView
+from asm.application.indicator_policy import indicator_state_for
+from asm.application.ports import (
+    ClockPort,
+    DisplayPort,
+    EventAudioPort,
+    EventLogRepository,
+    IndicatorPort,
+    SystemView,
+)
 from asm.domain.models import AuditRecord, StateTransition
-from asm.domain.states import EventType, SystemState
+from asm.domain.priorities import EVENT_PRIORITIES
+from asm.domain.states import EventSource, EventType, SystemState
 from asm.domain.transitions import InvalidTransition, transition
 
 _VIEWS: dict[SystemState, tuple[str, str]] = {
     SystemState.BOOT: ("ASM BLTeech", "Iniciando"),
     SystemState.SELF_TEST: ("Autoprueba", "Verificando sistema"),
     SystemState.IDLE: ("Sistema listo", "En espera"),
+    SystemState.RWT_ACTIVE: ("AVISO RWT", "Evento activo"),
     SystemState.SIMULACRO_ACTIVE: ("SIMULACRO", "Evento activo"),
+    SystemState.EVACUACION_ACTIVE: ("EVACUACION", "Evento activo"),
+    SystemState.EQW_ACTIVE: ("ALERTA SISMICA", "EQW activo"),
     SystemState.STOPPED: ("Evento detenido", "Paro registrado"),
 }
 
@@ -25,10 +37,14 @@ class SystemController:
         clock: ClockPort,
         display: DisplayPort,
         event_log: EventLogRepository,
+        indicators: IndicatorPort,
+        audio: EventAudioPort | None = None,
     ) -> None:
         self._clock = clock
         self._display = display
         self._event_log = event_log
+        self._indicators = indicators
+        self._audio = audio
         self._state = SystemState.BOOT
 
     @property
@@ -38,9 +54,15 @@ class SystemController:
     def present(self) -> None:
         """Render the current state without changing it."""
         title, detail = _VIEWS[self._state]
+        self._indicators.apply(indicator_state_for(self._state))
         self._display.show(SystemView(state=self._state, title=title, detail=detail))
 
-    def dispatch(self, event: EventType) -> StateTransition:
+    def dispatch(
+        self,
+        event: EventType,
+        *,
+        source: EventSource = EventSource.SYSTEM,
+    ) -> StateTransition:
         """Apply one event, audit the decision, and update the display."""
         previous_state = self._state
         try:
@@ -50,6 +72,7 @@ class SystemController:
                 AuditRecord(
                     occurred_at=self._clock.now(),
                     event=event,
+                    source=source,
                     previous_state=previous_state,
                     resulting_state=None,
                     accepted=False,
@@ -63,11 +86,17 @@ class SystemController:
             AuditRecord(
                 occurred_at=self._clock.now(),
                 event=event,
+                source=source,
                 previous_state=previous_state,
                 resulting_state=self._state,
                 accepted=True,
                 reason="transition accepted",
             )
         )
+        if self._audio is not None:
+            if event is EventType.STOP_REQUESTED:
+                self._audio.stop()
+            elif event in EVENT_PRIORITIES:
+                self._audio.play(event)
         self.present()
         return result

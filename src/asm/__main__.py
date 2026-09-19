@@ -6,7 +6,12 @@ import sys
 
 from asm.application.controller import SystemController
 from asm.domain.states import EventType
-from asm.infrastructure.console import ConsoleDisplay, JsonLineEventLog, SystemClock
+from asm.infrastructure.console import (
+    ConsoleDisplay,
+    ConsoleIndicatorPanel,
+    JsonLineEventLog,
+    SystemClock,
+)
 
 
 def main() -> None:
@@ -14,6 +19,7 @@ def main() -> None:
         clock=SystemClock(),
         display=ConsoleDisplay(sys.stdout),
         event_log=JsonLineEventLog(sys.stdout),
+        indicators=ConsoleIndicatorPanel(sys.stdout),
     )
     controller.present()
     for event in (
