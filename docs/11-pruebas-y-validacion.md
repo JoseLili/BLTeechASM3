@@ -1,5 +1,8 @@
 # Pruebas y validación
 
+La primera recepción de campo de un EQW oficial quedó documentada en
+[`validation/2026-09-19-eqw-oficial.md`](validation/2026-09-19-eqw-oficial.md).
+
 ## Estrategia
 
 Las pruebas avanzan de reglas puras a integración simulada y después a hardware real. Cada evidencia identifica versión de software, revisión de carrier/receptor, configuración, instrumentos y resultado.
