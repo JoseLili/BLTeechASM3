@@ -45,6 +45,8 @@ def _service():  # type: ignore[no-untyped-def]
         display=display,
         audio=audio,
         diagnostic_log=log,
+        monotonic=monotonic,
+        rwt_notice_seconds=8.0,
     )
     return service, monotonic, panel, display, audio, log
 
@@ -87,6 +89,40 @@ def test_repeated_header_does_not_restart_audio_for_same_active_event() -> None:
     assert audio.played == [EventType.START_RWT]
 
 
+def test_rwt_banner_returns_to_waiting_view_while_validity_continues() -> None:
+    service, monotonic, panel, display, audio, log = _service()
+    service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
+    service.flush_display()
+    monotonic.current = 8.0
+
+    service.poll()
+
+    assert service.display_update_pending is True
+    assert service.flush_display() is True
+    view = display.history[-1]
+    assert view.state is SystemState.RWT_ACTIVE
+    assert view.title == "Esperando evento"
+    assert view.detail == "Escuchando SAME"
+    assert view.footer == "RWT vigente 180m"
+    assert view.compact is True
+    assert panel.history[-1] == IndicatorState(advisory=True, power=True)
+    assert audio.played == [EventType.START_RWT]
+    assert [record.code for record in log.records].count("SAME.VISIBLE.CHANGED") == 1
+
+
+def test_eqw_stays_prominent_for_its_complete_validity() -> None:
+    service, monotonic, _panel, display, _audio, _log = _service()
+    service.consume("EAS: ZCZC-CIV-EQW-000000+0001-832300-XDIF/005-")
+    service.flush_display()
+    monotonic.current = 8.0
+
+    service.poll()
+
+    assert service.display_update_pending is False
+    assert display.history[-1].state is SystemState.EQW_ACTIVE
+    assert display.history[-1].compact is False
+
+
 def test_confirmed_same_starts_audio_before_led_and_display() -> None:
     trace: list[str] = []
 
@@ -119,6 +155,8 @@ def test_confirmed_same_starts_audio_before_led_and_display() -> None:
         display=OrderedDisplay(),  # type: ignore[arg-type]
         audio=OrderedAudio(),
         diagnostic_log=InMemoryDiagnosticLog(),
+        monotonic=monotonic,
+        rwt_notice_seconds=8.0,
     )
 
     service.consume("EAS: ZCZC-CIV-EQW-000000+0001-832300-XDIF/005-")
@@ -163,6 +201,8 @@ def test_display_failure_is_logged_without_losing_accepted_header() -> None:
         display=FailingDisplay(),
         audio=audio,
         diagnostic_log=log,
+        monotonic=monotonic,
+        rwt_notice_seconds=8.0,
     )
     outcome = service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
 

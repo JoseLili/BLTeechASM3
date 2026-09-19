@@ -25,4 +25,13 @@ def test_pipeline_matches_validated_wm8960_gold_contract() -> None:
     assert commands.convert[17:19] == ("-b", "16")
     assert commands.convert[20:22] == ("-r", "22050")
     assert commands.convert[22:24] == ("-c", "1")
-    assert commands.decode == ("/usr/bin/multimon-ng", "-a", "EAS", "-t", "raw", "-")
+    assert commands.decode == (
+        "/usr/bin/stdbuf",
+        "-oL",
+        "/usr/bin/multimon-ng",
+        "-a",
+        "EAS",
+        "-t",
+        "raw",
+        "-",
+    )

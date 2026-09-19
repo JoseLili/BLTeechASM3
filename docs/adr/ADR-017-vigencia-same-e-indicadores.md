@@ -30,6 +30,10 @@ por fecha juliana o emisor.
   repeticiones no reinician el plazo.
 - Mantener RWT en AVISO/amarillo y EQW en ALERTA/rojo con parpadeo inicial de un
   segundo encendido y uno apagado.
+- Mostrar la pantalla prominente de RWT durante ocho segundos y después volver
+  a la vista `Esperando evento`, conservando `RWT vigente <minutos>m` en el pie.
+  Este cambio es sólo de presentación: el LED Advisory, la vigencia y el log no
+  se cancelan. EQW permanece prominente durante toda su vigencia.
 - Mantener avisos vigentes por separado: EQW tiene precedencia visual y, al
   vencer, reaparece una RWT todavía vigente.
 - Tratar `NNNN` únicamente como fin del encuadre RF, nunca como orden de apagar.

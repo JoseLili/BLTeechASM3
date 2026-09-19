@@ -147,7 +147,10 @@ class LumaOledDisplay:
         """Draw a sparse, readable operational frame for the small OLED."""
         with self._canvas_factory(self._device) as draw:
             draw.rectangle(self._device.bounding_box, outline="white", fill="black")
-            if view.state in (SystemState.RWT_ACTIVE, SystemState.EQW_ACTIVE):
+            if (
+                view.state in (SystemState.RWT_ACTIVE, SystemState.EQW_ACTIVE)
+                and not view.compact
+            ):
                 self._draw_alert(draw, view)
                 return
 
@@ -166,7 +169,7 @@ class LumaOledDisplay:
             )
             draw.text(
                 (3, 49),
-                _fit(f"ESTADO {view.state}", 20),
+                _fit(view.footer or f"ESTADO {view.state}", 20),
                 fill="white",
                 font=self._small_font,
             )

@@ -40,10 +40,13 @@ class DisplayConfig:
     """Non-critical timing choices for the local display."""
 
     startup_animation_seconds: float
+    rwt_notice_seconds: float
 
     def __post_init__(self) -> None:
         if not 0 < self.startup_animation_seconds <= 10:
             raise ValueError("startup_animation_seconds must be greater than zero and at most 10")
+        if not 1 <= self.rwt_notice_seconds <= 30:
+            raise ValueError("rwt_notice_seconds must be between 1 and 30")
 
 
 class ActivationMode(StrEnum):

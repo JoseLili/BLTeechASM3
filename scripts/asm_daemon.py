@@ -191,6 +191,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             display=display,
             audio=alert_audio,
             diagnostic_log=log,
+            monotonic=time.monotonic,
+            rwt_notice_seconds=DEFAULT_CONFIG.display.rwt_notice_seconds,
         )
         decoder = DecoderSupervisor(
             stream_factory=lambda: MultimonSameStream(

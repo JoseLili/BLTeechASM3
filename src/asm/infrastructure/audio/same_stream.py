@@ -68,7 +68,19 @@ def build_same_pipeline_commands(config: AudioConfig) -> SamePipelineCommands:
             "remix",
             str(config.radio_capture_channel + 1),
         ),
-        decode=("/usr/bin/multimon-ng", "-a", "EAS", "-t", "raw", "-"),
+        # multimon-ng uses block buffering when stdout is a pipe.  The daemon
+        # owns a long-lived pipe, so without stdbuf a valid SAME header can sit
+        # in userspace indefinitely instead of reaching poll_lines().
+        decode=(
+            "/usr/bin/stdbuf",
+            "-oL",
+            "/usr/bin/multimon-ng",
+            "-a",
+            "EAS",
+            "-t",
+            "raw",
+            "-",
+        ),
     )
 
 

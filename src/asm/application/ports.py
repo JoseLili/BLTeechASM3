@@ -23,6 +23,8 @@ class SystemView:
     state: SystemState
     title: str
     detail: str
+    footer: str | None = None
+    compact: bool = False
 
 
 @dataclass(frozen=True, slots=True)

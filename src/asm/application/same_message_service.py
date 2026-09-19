@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from asm.application.ports import (
     ClockPort,
     DiagnosticLogRepository,
@@ -38,14 +40,23 @@ class SameMessageService:
         display: DisplayPort,
         audio: EventAudioPort,
         diagnostic_log: DiagnosticLogRepository,
+        monotonic: Callable[[], float],
+        rwt_notice_seconds: float,
     ) -> None:
+        if rwt_notice_seconds <= 0:
+            raise ValueError("rwt_notice_seconds must be greater than zero")
         self._indicators = indicators
         self._clock = clock
         self._display = display
         self._audio = audio
         self._diagnostic_log = diagnostic_log
+        self._monotonic = monotonic
+        self._rwt_notice_seconds = rwt_notice_seconds
         self._visible_event: SameEventCode | None = None
-        self._attempted_event: SameEventCode | None | object = _UNSET
+        self._audio_event: SameEventCode | None | object = _UNSET
+        self._notice_event: SameEventCode | None = None
+        self._notice_deadline: float | None = None
+        self._attempted_display: tuple[SameEventCode | None, bool] | object = _UNSET
         self._pending_display: tuple[SameEventCode | None, SystemView, bool] | None = None
 
     @property
@@ -59,10 +70,12 @@ class SameMessageService:
             event=None,
             view=SystemView(
                 state=SystemState.IDLE,
-                title="Sistema listo",
+                title="Esperando evento",
                 detail="Escuchando SAME",
+                footer="Sin aviso vigente",
             ),
             log_change=False,
+            prominent=False,
         )
         self.flush_display()
 
@@ -147,13 +160,37 @@ class SameMessageService:
     def _present_if_changed(self, snapshot: SameIndicatorSnapshot | None = None) -> None:
         if snapshot is None:
             snapshot = self._indicators.poll()
-        if snapshot.event is self._attempted_event:
+        now = self._monotonic()
+        if snapshot.event is not self._notice_event:
+            self._notice_event = snapshot.event
+            self._notice_deadline = (
+                now + self._rwt_notice_seconds
+                if snapshot.event is SameEventCode.RWT
+                else None
+            )
+
+        prominent = snapshot.event is not None and (
+            snapshot.event is SameEventCode.EQW
+            or (self._notice_deadline is not None and now < self._notice_deadline)
+        )
+        display_key = (snapshot.event, prominent)
+        if display_key == self._attempted_display:
             return
         if snapshot.event is None:
             view = SystemView(
                 state=SystemState.IDLE,
-                title="Sistema listo",
+                title="Esperando evento",
                 detail="Escuchando SAME",
+                footer="Sin aviso vigente",
+            )
+        elif snapshot.event is SameEventCode.RWT and not prominent:
+            remaining_minutes = max(1, int((snapshot.expires_in_seconds + 59) // 60))
+            view = SystemView(
+                state=SystemState.RWT_ACTIVE,
+                title="Esperando evento",
+                detail="Escuchando SAME",
+                footer=f"RWT vigente {remaining_minutes}m",
+                compact=True,
             )
         else:
             state = (
@@ -168,12 +205,18 @@ class SameMessageService:
                 title=title,
                 detail=f"Vigencia {remaining_minutes} min",
             )
-        self._queue_display(event=snapshot.event, view=view, log_change=True)
+        self._queue_display(
+            event=snapshot.event,
+            view=view,
+            log_change=snapshot.event is not self._visible_event,
+            prominent=prominent,
+        )
 
     def _start_audio_if_changed(self, snapshot: SameIndicatorSnapshot) -> None:
         """Start audio before LED/display whenever the visible event changes."""
-        if snapshot.event is self._attempted_event:
+        if snapshot.event is self._audio_event:
             return
+        self._audio_event = snapshot.event
         if snapshot.event is None:
             self._audio.stop()
             return
@@ -190,8 +233,9 @@ class SameMessageService:
         event: SameEventCode | None,
         view: SystemView,
         log_change: bool,
+        prominent: bool,
     ) -> None:
-        self._attempted_event = event
+        self._attempted_display = (event, prominent)
         self._pending_display = (event, view, log_change)
 
     def _log_header(self, header: SameHeader, outcome: SameLineOutcome) -> None:

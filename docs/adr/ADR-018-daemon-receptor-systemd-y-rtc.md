@@ -17,6 +17,9 @@ civil aun después de perder alimentación de la Raspberry Pi.
   decisiones SAME.
 - Crear `arecord`, SoX y `multimon-ng` directamente, sin shell, y cerrar todos
   los hijos al detener el servicio.
+- Ejecutar `multimon-ng` mediante `/usr/bin/stdbuf -oL`: su salida estándar es
+  una tubería permanente hacia Python y el buffering por bloques retendría
+  cabeceras válidas hasta llenar el búfer o terminar el proceso.
 - Reiniciar el pipeline con backoff exponencial de uno a treinta segundos; dejar
   a systemd reiniciar el daemon después de una falla no recuperable.
 - Arrancar después de ALSA y la precarga WM8960; inspeccionar `/dev/rtc0` sin

@@ -162,6 +162,33 @@ def test_oled_adapter_gives_eqw_a_sparse_priority_layout() -> None:
     assert text_values == ["ALERTA", "SISMICA", "Vigencia 1 min", "WARNING ACTIVO"]
 
 
+def test_oled_adapter_renders_active_rwt_as_compact_waiting_footer() -> None:
+    device = FakeDevice()
+    drawing = FakeDrawingSurface()
+
+    @contextmanager
+    def canvas_factory(_device: object) -> Iterator[FakeDrawingSurface]:
+        yield drawing
+
+    display = LumaOledDisplay(
+        device=device,
+        canvas_factory=canvas_factory,
+        branding=DEFAULT_CONFIG.branding,
+    )
+    display.show(
+        SystemView(
+            state=SystemState.RWT_ACTIVE,
+            title="Esperando evento",
+            detail="Escuchando SAME",
+            footer="RWT vigente 180m",
+            compact=True,
+        )
+    )
+
+    text_values = [payload[1] for name, payload in drawing.operations if name == "text"]
+    assert text_values == ["Esperando evento", "Escuchando SAME", "RWT vigente 180m"]
+
+
 def test_oled_adapter_renders_diagnostic_notice() -> None:
     device = FakeDevice()
     drawing = FakeDrawingSurface()
