@@ -379,6 +379,11 @@ La documentación debe distinguir:
 - Ruta de señales opto–GPIO probada con jumper.
 - SA818S-V configurado por UART y ruta real SA818S-V → WM8960 → GOLD →
   `multimon-ng` decodificando una RWT.
+- Cadena completa en campo con el daemon receptor: una cabecera EQW real
+  (`ZCZC-CIV-EQW-000000+0005-832326-XDIF/005-`) fue aceptada por el parser
+  SAME y quedó registrada como `SAME.HEADER.ACCEPTED` en
+  `/var/lib/asm-blteech/diagnostics.jsonl`, confirmando la ruta extremo a
+  extremo también para alerta sísmica, no solo para RWT.
 - WM8960 enumerado para captura y el jack `Headphones` de la Pi separado para
   reproducción WAV interrumpible; ambos streams operaron simultáneamente.
 - Catálogo `rwt.wav`, `eqw.wav`, `simulacro.wav` y `evacuacion.wav`, con orden

@@ -125,6 +125,14 @@ Primera evidencia registrada:
 - `EJECUTADO` el 2026-09-11: el daemon completo mostró BOOT, verificó C7,
   registró `RTC.READY`, abrió `arecord → SoX → multimon-ng` y, al recibir
   SIGTERM, cerró los tres procesos y dejó los indicadores apagados.
+- `VALIDADO` por el usuario el 2026-09-19: con el daemon receptor corriendo en
+  la Raspberry Pi, una cabecera EQW real
+  `ZCZC-CIV-EQW-000000+0005-832326-XDIF/005-` fue demodulada extremo a extremo
+  y quedó registrada en `/var/lib/asm-blteech/diagnostics.jsonl` como
+  `SAME.HEADER.ACCEPTED` con `validity_seconds=300` y `all_units=true`. Es la
+  primera evidencia de campo de una alerta sísmica (no solo RWT) recorriendo
+  toda la cadena SA818S-V → WM8960 → GOLD → `multimon-ng` → parser SAME del
+  daemon.
 
 Prueba HIL de la política completa:
 
