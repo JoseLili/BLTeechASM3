@@ -23,7 +23,12 @@ DEFAULT_CONFIG = SystemConfig(
         generation="v3",
         startup_text="Iniciando",
     ),
-    display=DisplayConfig(startup_animation_seconds=5.0, rwt_notice_seconds=8.0),
+    display=DisplayConfig(
+        startup_animation_seconds=5.0,
+        idle_notice_seconds=2.0,
+        rwt_notice_seconds=8.0,
+        rwt_summary_seconds=5.0,
+    ),
     buttons=ButtonInputConfig(
         debounce_seconds=0.05,
         simulacro=ConfigurableButtonAction(

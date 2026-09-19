@@ -21,9 +21,18 @@ from asm.infrastructure.display.startup_animation import StartupFrame
 class FakeDevice:
     bounding_box: tuple[int, int, int, int] = (0, 0, 127, 63)
     cleared: bool = False
+    hidden: bool = False
+    shown: bool = False
 
     def clear(self) -> None:
         self.cleared = True
+
+    def show(self) -> None:
+        self.shown = True
+        self.hidden = False
+
+    def hide(self) -> None:
+        self.hidden = True
 
 
 @dataclass(slots=True)
@@ -72,7 +81,27 @@ def test_oled_adapter_renders_boot_view_and_clears() -> None:
     text_values = [payload[1] for name, payload in drawing.operations if name == "text"]
     assert text_values == ["ASM BLTeech", "Iniciando", "ESTADO BOOT"]
     assert drawing.operations[0][0] == "rectangle"
+    assert device.shown is True
     assert device.cleared is True
+
+
+def test_oled_standby_clears_and_hides_panel() -> None:
+    device = FakeDevice()
+
+    @contextmanager
+    def canvas_factory(_device: object) -> Iterator[FakeDrawingSurface]:
+        yield FakeDrawingSurface()
+
+    display = LumaOledDisplay(
+        device=device,
+        canvas_factory=canvas_factory,
+        branding=DEFAULT_CONFIG.branding,
+    )
+
+    display.standby()
+
+    assert device.cleared is True
+    assert device.hidden is True
 
 
 def test_fit_normalizes_and_truncates_long_text() -> None:

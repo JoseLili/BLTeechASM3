@@ -42,9 +42,12 @@ class SameMessageService:
         diagnostic_log: DiagnosticLogRepository,
         monotonic: Callable[[], float],
         rwt_notice_seconds: float,
+        rwt_summary_seconds: float,
     ) -> None:
         if rwt_notice_seconds <= 0:
             raise ValueError("rwt_notice_seconds must be greater than zero")
+        if rwt_summary_seconds <= 0:
+            raise ValueError("rwt_summary_seconds must be greater than zero")
         self._indicators = indicators
         self._clock = clock
         self._display = display
@@ -52,12 +55,14 @@ class SameMessageService:
         self._diagnostic_log = diagnostic_log
         self._monotonic = monotonic
         self._rwt_notice_seconds = rwt_notice_seconds
+        self._rwt_summary_seconds = rwt_summary_seconds
         self._visible_event: SameEventCode | None = None
         self._audio_event: SameEventCode | None | object = _UNSET
         self._notice_event: SameEventCode | None = None
         self._notice_deadline: float | None = None
-        self._attempted_display: tuple[SameEventCode | None, bool] | object = _UNSET
-        self._pending_display: tuple[SameEventCode | None, SystemView, bool] | None = None
+        self._summary_deadline: float | None = None
+        self._attempted_display: tuple[SameEventCode | None, str] | object = _UNSET
+        self._pending_display: tuple[SameEventCode | None, SystemView | None, bool] | None = None
 
     @property
     def display_update_pending(self) -> bool:
@@ -75,7 +80,17 @@ class SameMessageService:
                 footer="Sin aviso vigente",
             ),
             log_change=False,
-            prominent=False,
+            phase="idle",
+        )
+        self.flush_display()
+
+    def enter_standby(self) -> None:
+        """Blank the OLED before continuous reception starts."""
+        self._queue_display(
+            event=self._notice_event,
+            view=None,
+            log_change=False,
+            phase="standby",
         )
         self.flush_display()
 
@@ -129,15 +144,23 @@ class SameMessageService:
         self._pending_display = None
         event, view, log_change = pending
         previous = self._visible_event
+        requested = (
+            event.value
+            if event is not None
+            else ("IDLE" if view is not None else "STANDBY")
+        )
         try:
-            self._display.show(view)
+            if view is None:
+                self._display.standby()
+            else:
+                self._display.show(view)
         except Exception as error:
             self._append(
                 code="DISPLAY.WRITE.FAILED",
                 severity=DiagnosticSeverity.WARNING,
                 message="No fue posible actualizar la pantalla; la recepcion continua",
                 context=(
-                    ("requested", event.value if event is not None else "IDLE"),
+                    ("requested", requested),
                     ("error_type", type(error).__name__),
                     ("error", str(error) or type(error).__name__),
                 ),
@@ -168,22 +191,35 @@ class SameMessageService:
                 if snapshot.event is SameEventCode.RWT
                 else None
             )
+            self._summary_deadline = (
+                self._notice_deadline + self._rwt_summary_seconds
+                if self._notice_deadline is not None
+                else None
+            )
 
-        prominent = snapshot.event is not None and (
-            snapshot.event is SameEventCode.EQW
-            or (self._notice_deadline is not None and now < self._notice_deadline)
-        )
-        display_key = (snapshot.event, prominent)
+        if snapshot.event is None:
+            phase = "standby"
+        elif snapshot.event is SameEventCode.EQW or (
+            self._notice_deadline is not None and now < self._notice_deadline
+        ):
+            phase = "prominent"
+        elif self._summary_deadline is not None and now < self._summary_deadline:
+            phase = "summary"
+        else:
+            phase = "standby"
+
+        display_key = (snapshot.event, phase)
         if display_key == self._attempted_display:
             return
-        if snapshot.event is None:
-            view = SystemView(
-                state=SystemState.IDLE,
-                title="Esperando evento",
-                detail="Escuchando SAME",
-                footer="Sin aviso vigente",
+        if phase == "standby":
+            self._queue_display(
+                event=snapshot.event,
+                view=None,
+                log_change=snapshot.event is not self._visible_event,
+                phase=phase,
             )
-        elif snapshot.event is SameEventCode.RWT and not prominent:
+            return
+        if snapshot.event is SameEventCode.RWT and phase == "summary":
             remaining_minutes = max(1, int((snapshot.expires_in_seconds + 59) // 60))
             view = SystemView(
                 state=SystemState.RWT_ACTIVE,
@@ -209,7 +245,7 @@ class SameMessageService:
             event=snapshot.event,
             view=view,
             log_change=snapshot.event is not self._visible_event,
-            prominent=prominent,
+            phase=phase,
         )
 
     def _start_audio_if_changed(self, snapshot: SameIndicatorSnapshot) -> None:
@@ -231,11 +267,11 @@ class SameMessageService:
         self,
         *,
         event: SameEventCode | None,
-        view: SystemView,
+        view: SystemView | None,
         log_change: bool,
-        prominent: bool,
+        phase: str,
     ) -> None:
-        self._attempted_display = (event, prominent)
+        self._attempted_display = (event, phase)
         self._pending_display = (event, view, log_change)
 
     def _log_header(self, header: SameHeader, outcome: SameLineOutcome) -> None:

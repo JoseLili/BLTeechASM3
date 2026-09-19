@@ -18,7 +18,9 @@ def test_factory_defaults_describe_current_brand_and_animation() -> None:
     assert DEFAULT_CONFIG.branding.product_name == "ASM"
     assert DEFAULT_CONFIG.branding.generation == "v3"
     assert DEFAULT_CONFIG.display.startup_animation_seconds == 5.0
+    assert DEFAULT_CONFIG.display.idle_notice_seconds == 2.0
     assert DEFAULT_CONFIG.display.rwt_notice_seconds == 8.0
+    assert DEFAULT_CONFIG.display.rwt_summary_seconds == 5.0
     assert DEFAULT_CONFIG.buttons.debounce_seconds == 0.05
     assert DEFAULT_CONFIG.buttons.simulacro.mode is ActivationMode.IMMEDIATE
     assert DEFAULT_CONFIG.buttons.evacuacion.mode is ActivationMode.IMMEDIATE
@@ -58,13 +60,35 @@ def test_branding_rejects_empty_required_text(field_name: str) -> None:
 @pytest.mark.parametrize("seconds", [0, -1, 10.1])
 def test_display_rejects_unsafe_animation_duration(seconds: float) -> None:
     with pytest.raises(ValueError, match="at most 10"):
-        DisplayConfig(startup_animation_seconds=seconds, rwt_notice_seconds=8.0)
+        DisplayConfig(
+            startup_animation_seconds=seconds,
+            idle_notice_seconds=2.0,
+            rwt_notice_seconds=8.0,
+            rwt_summary_seconds=5.0,
+        )
 
 
 @pytest.mark.parametrize("seconds", [0, 0.99, 30.1])
 def test_display_rejects_invalid_rwt_notice_duration(seconds: float) -> None:
     with pytest.raises(ValueError, match="between 1 and 30"):
-        DisplayConfig(startup_animation_seconds=5.0, rwt_notice_seconds=seconds)
+        DisplayConfig(
+            startup_animation_seconds=5.0,
+            idle_notice_seconds=2.0,
+            rwt_notice_seconds=seconds,
+            rwt_summary_seconds=5.0,
+        )
+
+
+@pytest.mark.parametrize("seconds", [-0.01, 10.1])
+def test_display_rejects_invalid_idle_notice_duration(seconds: float) -> None:
+    with pytest.raises(ValueError, match="between zero and 10"):
+        replace(DEFAULT_CONFIG.display, idle_notice_seconds=seconds)
+
+
+@pytest.mark.parametrize("seconds", [0, 0.99, 30.1])
+def test_display_rejects_invalid_rwt_summary_duration(seconds: float) -> None:
+    with pytest.raises(ValueError, match="between 1 and 30"):
+        replace(DEFAULT_CONFIG.display, rwt_summary_seconds=seconds)
 
 
 @pytest.mark.parametrize("seconds", [0, -0.01, 0.201])

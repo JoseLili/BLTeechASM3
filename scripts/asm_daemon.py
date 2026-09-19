@@ -193,6 +193,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             diagnostic_log=log,
             monotonic=time.monotonic,
             rwt_notice_seconds=DEFAULT_CONFIG.display.rwt_notice_seconds,
+            rwt_summary_seconds=DEFAULT_CONFIG.display.rwt_summary_seconds,
         )
         decoder = DecoderSupervisor(
             stream_factory=lambda: MultimonSameStream(
@@ -203,6 +204,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         resources.callback(decoder.close)
         messages.present_idle()
+        time.sleep(DEFAULT_CONFIG.display.idle_notice_seconds)
+        messages.enter_standby()
 
         last_decoder_state: DecoderServiceState | None = None
         print(f"READY channel={channel.value} diagnostics={args.diagnostic_log}", flush=True)

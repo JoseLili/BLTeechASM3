@@ -72,6 +72,8 @@ class DisplayPort(Protocol):
 
     def show(self, view: SystemView) -> None: ...
 
+    def standby(self) -> None: ...
+
 
 class MenuDisplayPort(Protocol):
     """Present complete menu pages independently from operational states."""

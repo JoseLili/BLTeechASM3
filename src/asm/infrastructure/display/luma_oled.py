@@ -33,6 +33,10 @@ class OledDevice(Protocol):
 
     def clear(self) -> None: ...
 
+    def show(self) -> None: ...
+
+    def hide(self) -> None: ...
+
 
 CanvasFactory = Callable[[OledDevice], AbstractContextManager[DrawingSurface]]
 
@@ -152,27 +156,27 @@ class LumaOledDisplay:
                 and not view.compact
             ):
                 self._draw_alert(draw, view)
-                return
-
-            draw.text(
-                (3, 2),
-                _fit(view.title, 16),
-                fill="white",
-                font=self._medium_font,
-            )
-            draw.line((3, 20, 124, 20), fill="white")
-            draw.text(
-                (3, 27),
-                _fit(view.detail, 19),
-                fill="white",
-                font=self._small_font,
-            )
-            draw.text(
-                (3, 49),
-                _fit(view.footer or f"ESTADO {view.state}", 20),
-                fill="white",
-                font=self._small_font,
-            )
+            else:
+                draw.text(
+                    (3, 2),
+                    _fit(view.title, 16),
+                    fill="white",
+                    font=self._medium_font,
+                )
+                draw.line((3, 20, 124, 20), fill="white")
+                draw.text(
+                    (3, 27),
+                    _fit(view.detail, 19),
+                    fill="white",
+                    font=self._small_font,
+                )
+                draw.text(
+                    (3, 49),
+                    _fit(view.footer or f"ESTADO {view.state}", 20),
+                    fill="white",
+                    font=self._small_font,
+                )
+        self._device.show()
 
     def show_menu(self, view: MenuView) -> None:
         """Render one large selected option instead of four tiny rows."""
@@ -202,6 +206,7 @@ class LumaOledDisplay:
                     font=self._medium_font,
                 )
             draw.text((3, 53), "^/v MOVER   OK >", fill="white", font=self._small_font)
+        self._device.show()
 
     def show_diagnostic(self, view: DiagnosticView) -> None:
         """Render an asynchronous diagnostic notice without changing system state."""
@@ -227,6 +232,7 @@ class LumaOledDisplay:
                     fill="white",
                     font=self._small_font,
                 )
+        self._device.show()
 
     def show_startup_frame(self, frame: StartupFrame) -> None:
         """Draw one branded frame without changing or interpreting system state."""
@@ -245,6 +251,7 @@ class LumaOledDisplay:
             draw.text((42, 39), _fit(product_label), fill="white", font=self._small_font)
             startup_label = f"{self._branding.startup_text}{'.' * frame.dots}"
             draw.text((32, 51), _fit(startup_label), fill="white", font=self._small_font)
+        self._device.show()
 
     def _draw_alert(self, draw: DrawingSurface, view: SystemView) -> None:
         """Give RWT and EQW the largest text while retaining validity."""
@@ -269,6 +276,11 @@ class LumaOledDisplay:
     def clear(self) -> None:
         """Clear the physical display after an explicit shutdown or smoke test."""
         self._device.clear()
+
+    def standby(self) -> None:
+        """Blank and electrically quiet the OLED while the receiver listens."""
+        self._device.clear()
+        self._device.hide()
 
 
 # A compact seismic trace gives the startup sequence a BLTeech identity while

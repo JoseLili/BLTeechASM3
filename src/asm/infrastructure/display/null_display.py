@@ -23,3 +23,6 @@ class NullDisplay:
 
     def clear(self) -> None:
         return
+
+    def standby(self) -> None:
+        return

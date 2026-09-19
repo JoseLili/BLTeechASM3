@@ -31,12 +31,16 @@ class InMemoryDisplay:
 
     history: list[SystemView] = field(default_factory=list)
     diagnostics: list[DiagnosticView] = field(default_factory=list)
+    standby_calls: int = 0
 
     def show(self, view: SystemView) -> None:
         self.history.append(view)
 
     def show_diagnostic(self, view: DiagnosticView) -> None:
         self.diagnostics.append(view)
+
+    def standby(self) -> None:
+        self.standby_calls += 1
 
 
 @dataclass(slots=True)
