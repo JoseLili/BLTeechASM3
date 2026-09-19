@@ -78,7 +78,9 @@ class JsonLineSameNoticeRepository:
         raw = payload.get("raw")
         received_at = payload.get("received_at")
         expires_at = payload.get("expires_at")
-        if not all(isinstance(value, str) for value in (raw, received_at, expires_at)):
+        if not isinstance(raw, str):
+            raise ValueError("history raw field must be text")
+        if not isinstance(received_at, str) or not isinstance(expires_at, str):
             raise ValueError("history fields must be text")
         decoded = parse_multimon_same_line(raw)
         if decoded is None or isinstance(decoded, SameEndOfMessage):

@@ -7,6 +7,7 @@ import signal
 import time
 from collections.abc import Sequence
 from contextlib import ExitStack
+from datetime import UTC
 from pathlib import Path
 
 from asm.application.decoder_supervisor import DecoderServiceState, DecoderSupervisor
@@ -14,6 +15,11 @@ from asm.application.event_audio import EventAudioService
 from asm.application.menu_input import MenuCommand
 from asm.application.ports import SystemView
 from asm.application.receiver_service import ReceiverError, ReceiverService
+from asm.application.same_history_presenter import (
+    collapse_repetitions,
+    empty_history_view,
+    recent_notice_view,
+)
 from asm.application.same_indicator_supervisor import SameIndicatorSupervisor
 from asm.application.same_message_service import SameMessageService
 from asm.config import DEFAULT_CONFIG
@@ -236,12 +242,69 @@ def main(argv: Sequence[str] | None = None) -> int:
                 severity=DiagnosticSeverity.INFO,
                 message="Vigencias SAME restauradas al arrancar",
                 context=(("active_notices", str(restored)),),
-            )
+        )
         menu_buttons: Pcf8574MenuButtons | None = None
+        history_index = 0
+        history_open = False
+        operator_timezone = clock.now().astimezone().tzinfo or UTC
+
+        def show_history(command: MenuCommand) -> None:
+            nonlocal history_index, history_open
+            try:
+                records = collapse_repetitions(notice_history.recent(limit=20))
+            except Exception as error:
+                _append(
+                    log,
+                    clock,
+                    code="SAME.HISTORY.READ.FAILED",
+                    severity=DiagnosticSeverity.WARNING,
+                    message="No fue posible consultar eventos recientes",
+                    context=(
+                        ("error_type", type(error).__name__),
+                        ("error", str(error) or type(error).__name__),
+                    ),
+                )
+                records = ()
+            if not records:
+                history_open = True
+                messages.request_temporary_view(
+                    key="history:empty",
+                    view=empty_history_view(),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+                return
+            if not history_open:
+                history_index = 0
+            elif command is MenuCommand.MOVE_DOWN:
+                history_index = (history_index + 1) % len(records)
+            else:
+                history_index = (history_index - 1) % len(records)
+            history_open = True
+            record = records[history_index]
+            messages.request_temporary_view(
+                key=f"history:{history_index}:{record.received_at.isoformat()}",
+                view=recent_notice_view(
+                    record,
+                    index=history_index,
+                    total=len(records),
+                    timezone=operator_timezone,
+                    now=clock.now(),
+                ),
+                duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+            )
 
         def menu_command_received(command: MenuCommand) -> None:
-            if command is not MenuCommand.CONFIRM:
+            nonlocal history_open
+            if command in (MenuCommand.MOVE_DOWN, MenuCommand.MOVE_UP):
+                show_history(command)
                 return
+            if command not in (
+                MenuCommand.CONFIRM,
+                MenuCommand.GO_BACK,
+                MenuCommand.MOVE_LEFT,
+            ):
+                return
+            history_open = False
             messages.request_status(
                 duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds
             )

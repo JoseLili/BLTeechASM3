@@ -92,6 +92,18 @@ la señal entregada al decoder SAME.
 Diagnóstico, Sistema e Información, submenús, cursor desplazable, Enter,
 Regresar y acción global de Escucha.
 
+`IMPLEMENTADO EN DAEMON`: con la OLED en standby, Enter muestra por diez
+segundos `Esperando evento` y la vigencia activa. Abajo abre el recibo SAME más
+reciente; Arriba/Abajo recorren hasta veinte recibos estructurados, colapsando
+repeticiones idénticas. Regresar o Izquierda vuelve al estado principal. Un
+EQW activo no puede ser ocultado por el historial y una alerta nueva siempre
+preempta la consulta del operador.
+
+El árbol completo de configuración sigue disponible en la prueba integrada y
+se conectará al daemon después de consolidar el arbitraje único de OLED. Esto
+evita escritores I²C concurrentes y mantiene acotado el tiempo con píxeles
+encendidos en Carrier Rev A.
+
 `IMPLEMENTADO`: la hoja `Recepción → Canal C1-C7` abre un editor limitado a los
 siete canales congelados. Arriba/Abajo recorren la lista; el primer Enter aplica
 el perfil temporal y exige readback del SA818; el segundo Enter guarda. Regresar

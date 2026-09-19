@@ -70,6 +70,7 @@ class SameMessageService:
         self._notice_deadline: float | None = None
         self._summary_deadline: float | None = None
         self._status_deadline: float | None = None
+        self._temporary_view: tuple[str, SystemView] | None = None
         self._attempted_display: tuple[SameEventCode | None, str] | object = _UNSET
         self._pending_display: tuple[SameEventCode | None, SystemView | None, bool] | None = None
 
@@ -107,8 +108,28 @@ class SameMessageService:
         """Wake a standby display temporarily without changing notice validity."""
         if duration_seconds <= 0:
             raise ValueError("duration_seconds must be greater than zero")
+        self._temporary_view = None
         self._status_deadline = self._monotonic() + duration_seconds
         self._present_if_changed()
+
+    def request_temporary_view(
+        self,
+        *,
+        key: str,
+        view: SystemView,
+        duration_seconds: float,
+    ) -> bool:
+        """Show operator information unless a higher-priority EQW is active."""
+        if not key.strip():
+            raise ValueError("key must not be empty")
+        if duration_seconds <= 0:
+            raise ValueError("duration_seconds must be greater than zero")
+        if self._indicators.snapshot().event is SameEventCode.EQW:
+            return False
+        self._temporary_view = (key, view)
+        self._status_deadline = self._monotonic() + duration_seconds
+        self._present_if_changed()
+        return True
 
     def restore_active(self, records: Sequence[SameNoticeRecord]) -> int:
         """Restore the latest unexpired notice per event without replaying audio."""
@@ -234,7 +255,12 @@ class SameMessageService:
         status_requested = self._status_deadline is not None and now < self._status_deadline
         if self._status_deadline is not None and not status_requested:
             self._status_deadline = None
-        if snapshot.event is not self._notice_event:
+            self._temporary_view = None
+        event_changed = snapshot.event is not self._notice_event
+        if event_changed:
+            self._temporary_view = None
+            self._status_deadline = None
+            status_requested = False
             self._notice_event = snapshot.event
             self._notice_deadline = (
                 now + self._rwt_notice_seconds
@@ -246,6 +272,16 @@ class SameMessageService:
                 if self._notice_deadline is not None
                 else None
             )
+
+        if status_requested and self._temporary_view is not None and not event_changed:
+            key, view = self._temporary_view
+            self._queue_display(
+                event=snapshot.event,
+                view=view,
+                log_change=False,
+                phase=f"temporary:{key}",
+            )
+            return
 
         if status_requested and snapshot.event is None:
             phase = "idle"

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from asm.application.ports import SystemView
 from asm.application.same_indicator_supervisor import (
     SameIndicatorSupervisor,
     SameLineOutcome,
@@ -192,6 +193,53 @@ def test_enter_status_request_temporarily_wakes_standby_rwt_summary() -> None:
     service.poll()
     service.flush_display()
     assert display.standby_calls == 2
+
+
+def test_recent_history_view_is_temporary_and_new_eqw_preempts_it() -> None:
+    service, _monotonic, _panel, display, _audio, _log = _service()
+    recent = SystemView(
+        state=SystemState.RWT_ACTIVE,
+        title="RWT recibido",
+        detail="19/09 08:45",
+        footer="OK 1/2 180m",
+        compact=True,
+    )
+
+    assert (
+        service.request_temporary_view(
+            key="history:0",
+            view=recent,
+            duration_seconds=10.0,
+        )
+        is True
+    )
+    service.flush_display()
+    assert display.history[-1] == recent
+
+    service.consume("EAS: ZCZC-CIV-EQW-000000+0001-832300-XDIF/005-")
+    service.flush_display()
+
+    assert display.history[-1].state is SystemState.EQW_ACTIVE
+    assert display.history[-1].title == "ALERTA SISMICA"
+
+
+def test_active_eqw_rejects_operator_history_override() -> None:
+    service, _monotonic, _panel, display, _audio, _log = _service()
+    service.consume("EAS: ZCZC-CIV-EQW-000000+0001-832300-XDIF/005-")
+    service.flush_display()
+
+    accepted = service.request_temporary_view(
+        key="history:0",
+        view=SystemView(
+            state=SystemState.RWT_ACTIVE,
+            title="RWT recibido",
+            detail="19/09 08:45",
+        ),
+        duration_seconds=10.0,
+    )
+
+    assert accepted is False
+    assert display.history[-1].state is SystemState.EQW_ACTIVE
 
 
 def test_confirmed_same_starts_audio_before_led_and_display() -> None:
