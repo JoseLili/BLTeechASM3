@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from asm.application.ports import DiagnosticView, SystemView
+from asm.application.ports import DiagnosticView, MenuView, SystemView
 from asm.domain.diagnostics import DiagnosticRecord
 from asm.domain.indicators import IndicatorState
 from asm.domain.models import AuditRecord
@@ -31,6 +31,7 @@ class InMemoryDisplay:
     """Capture rendered views in order."""
 
     history: list[SystemView] = field(default_factory=list)
+    menu_history: list[MenuView] = field(default_factory=list)
     diagnostics: list[DiagnosticView] = field(default_factory=list)
     standby_calls: int = 0
 
@@ -39,6 +40,9 @@ class InMemoryDisplay:
 
     def show_diagnostic(self, view: DiagnosticView) -> None:
         self.diagnostics.append(view)
+
+    def show_menu(self, view: MenuView) -> None:
+        self.menu_history.append(view)
 
     def standby(self) -> None:
         self.standby_calls += 1

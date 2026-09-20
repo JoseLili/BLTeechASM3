@@ -6,6 +6,7 @@ import pytest
 
 from asm.application.menu_controller import (
     DEFAULT_MENU,
+    PRODUCTION_MENU,
     MenuAction,
     MenuActionKind,
     MenuController,
@@ -116,3 +117,29 @@ def test_refresh_rejects_closed_menu() -> None:
 
     with pytest.raises(RuntimeError, match="closed menu"):
         menu.refresh()
+
+
+def test_close_discards_nested_navigation_without_rendering() -> None:
+    menu, display = _controller()
+    menu.open()
+    menu.handle(MenuCommand.CONFIRM)
+    rendered = len(display.history)
+
+    menu.close()
+
+    assert menu.is_open is False
+    assert len(display.history) == rendered
+
+
+def test_production_menu_exposes_configuration_status_tests_and_information() -> None:
+    assert tuple(item.label for item in PRODUCTION_MENU.items) == (
+        "Configuracion",
+        "Estado equipo",
+        "Pruebas",
+        "Informacion",
+    )
+    assert PRODUCTION_MENU.items[0].child is not None
+    assert tuple(item.key for item in PRODUCTION_MENU.items[0].child.items) == (
+        "receiver.channel",
+        "audio.alarm",
+    )

@@ -9,8 +9,9 @@ from datetime import timedelta
 from asm.application.ports import (
     ClockPort,
     DiagnosticLogRepository,
-    DisplayPort,
     EventAudioPort,
+    MenuView,
+    OperatorDisplayPort,
     SameNoticeRepository,
     SystemView,
 )
@@ -41,7 +42,7 @@ class SameMessageService:
         *,
         indicators: SameIndicatorSupervisor,
         clock: ClockPort,
-        display: DisplayPort,
+        display: OperatorDisplayPort,
         audio: EventAudioPort,
         diagnostic_log: DiagnosticLogRepository,
         notice_history: SameNoticeRepository,
@@ -73,9 +74,11 @@ class SameMessageService:
         self._notice_deadline: float | None = None
         self._summary_deadline: float | None = None
         self._status_deadline: float | None = None
-        self._temporary_view: tuple[str, SystemView] | None = None
+        self._temporary_view: tuple[str, SystemView | MenuView] | None = None
         self._attempted_display: tuple[SameEventCode | None, str] | object = _UNSET
-        self._pending_display: tuple[SameEventCode | None, SystemView | None, bool] | None = None
+        self._pending_display: (
+            tuple[SameEventCode | None, SystemView | MenuView | None, bool] | None
+        ) = None
 
     @property
     def display_update_pending(self) -> bool:
@@ -133,6 +136,25 @@ class SameMessageService:
         duration_seconds: float,
     ) -> bool:
         """Show operator information unless a higher-priority EQW is active."""
+        if not key.strip():
+            raise ValueError("key must not be empty")
+        if duration_seconds <= 0:
+            raise ValueError("duration_seconds must be greater than zero")
+        if self._indicators.snapshot().event is SameEventCode.EQW:
+            return False
+        self._temporary_view = (key, view)
+        self._status_deadline = self._monotonic() + duration_seconds
+        self._present_if_changed()
+        return True
+
+    def request_menu_view(
+        self,
+        *,
+        key: str,
+        view: MenuView,
+        duration_seconds: float,
+    ) -> bool:
+        """Queue a menu page through the same safe I2C window as alerts."""
         if not key.strip():
             raise ValueError("key must not be empty")
         if duration_seconds <= 0:
@@ -233,6 +255,8 @@ class SameMessageService:
         try:
             if view is None:
                 self._display.standby()
+            elif isinstance(view, MenuView):
+                self._display.show_menu(view)
             else:
                 self._display.show(view)
         except Exception as error:
@@ -379,7 +403,7 @@ class SameMessageService:
         self,
         *,
         event: SameEventCode | None,
-        view: SystemView | None,
+        view: SystemView | MenuView | None,
         log_change: bool,
         phase: str,
     ) -> None:

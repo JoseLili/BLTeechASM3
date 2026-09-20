@@ -82,6 +82,10 @@ class MenuDisplayPort(Protocol):
     def show_menu(self, view: MenuView) -> None: ...
 
 
+class OperatorDisplayPort(DisplayPort, MenuDisplayPort, Protocol):
+    """Render operational and menu content through one physical display."""
+
+
 class DiagnosticDisplayPort(Protocol):
     """Present an asynchronous diagnostic notice."""
 

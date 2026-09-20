@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from asm.application.ports import SystemView
+from asm.application.ports import MenuView, SystemView
 from asm.application.same_indicator_supervisor import (
     SameIndicatorSupervisor,
     SameLineOutcome,
@@ -265,6 +265,28 @@ def test_active_eqw_rejects_operator_history_override() -> None:
     )
 
     assert accepted is False
+    assert display.history[-1].state is SystemState.EQW_ACTIVE
+
+
+def test_menu_page_uses_queued_display_and_eqw_preempts_it() -> None:
+    service, _monotonic, _panel, display, _audio, _log = _service()
+    menu = MenuView(
+        title="Menu principal",
+        items=("Configuracion", "Estado equipo"),
+        selected_index=0,
+    )
+
+    assert service.request_menu_view(
+        key="menu:root:0",
+        view=menu,
+        duration_seconds=10.0,
+    )
+    assert display.menu_history == []
+    service.flush_display()
+    assert display.menu_history == [menu]
+
+    service.consume("EAS: ZCZC-CIV-EQW-000000+0001-832300-XDIF/005-")
+    service.flush_display()
     assert display.history[-1].state is SystemState.EQW_ACTIVE
 
 

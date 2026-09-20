@@ -10,8 +10,15 @@ from contextlib import ExitStack
 from datetime import UTC
 from pathlib import Path
 
+from asm.application.audio_presenter import audio_status_view
+from asm.application.channel_editor import (
+    ChannelEditorOutcome,
+    ChannelRollbackError,
+    ReceiverChannelEditor,
+)
 from asm.application.decoder_supervisor import DecoderServiceState, DecoderSupervisor
 from asm.application.event_audio import EventAudioService
+from asm.application.menu_controller import PRODUCTION_MENU, MenuAction, MenuController
 from asm.application.menu_input import MenuCommand
 from asm.application.ports import SystemView
 from asm.application.receiver_service import ReceiverError, ReceiverService
@@ -20,6 +27,7 @@ from asm.application.rwt_schedule_supervisor import (
     RwtScheduleSupervisor,
     RwtScheduleTransition,
 )
+from asm.application.safe_menu_display import SafeMenuDisplay
 from asm.application.same_history_presenter import (
     collapse_repetitions,
     empty_history_view,
@@ -32,7 +40,7 @@ from asm.domain.diagnostics import DiagnosticRecord, DiagnosticSeverity
 from asm.domain.indicators import IndicatorState
 from asm.domain.receiver import ReceiverProfile
 from asm.domain.same import SameNoticeRecord
-from asm.domain.states import SystemState
+from asm.domain.states import EventType, SystemState
 from asm.infrastructure.audio.alsa_health import AlsaAudioHealth
 from asm.infrastructure.audio.alsa_player import AlsaAudioPlayer
 from asm.infrastructure.audio.same_stream import MultimonSameStream
@@ -172,8 +180,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         resources.callback(receiver_adapter.close)
         repository = JsonReceiverChannelRepository(args.state_file)
         channel = repository.load() or DEFAULT_CONFIG.receiver.channel
+        receiver = ReceiverService(receiver_adapter)
         try:
-            ReceiverService(receiver_adapter).configure(ReceiverProfile.gold(channel))
+            receiver.configure(ReceiverProfile.gold(channel))
         except ReceiverError as error:
             _append(
                 log,
@@ -288,6 +297,140 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         initial_schedule_transition = schedule.poll()
 
+        safe_menu_display = SafeMenuDisplay(
+            messages=messages,
+            duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+        )
+        menu = MenuController(display=safe_menu_display, root=PRODUCTION_MENU)
+        channel_editor = ReceiverChannelEditor(
+            display=safe_menu_display,
+            receiver=receiver,
+            repository=repository,
+            committed_channel=channel,
+        )
+        menu_deadline: float | None = None
+
+        def touch_menu() -> None:
+            nonlocal menu_deadline
+            menu_deadline = time.monotonic() + DEFAULT_CONFIG.display.idle_notice_seconds
+
+        def show_action_view(action: MenuAction) -> None:
+            target = action.target
+            if target == "receiver.channel":
+                channel_editor.open()
+            elif target == "receiver.status":
+                selected = channel_editor.committed_channel
+                messages.request_temporary_view(
+                    key=f"receiver:{selected.value}",
+                    view=SystemView(
+                        state=SystemState.IDLE,
+                        title="Receptor OK",
+                        detail=f"{selected.value} {selected.frequency_text} MHz",
+                        footer="SA818 verificado",
+                    ),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+            elif target in ("audio.alarm", "diagnostics.audio"):
+                safe_menu_display.show_menu(audio_status_view(health.read()))
+            elif target == "diagnostics.rtc":
+                messages.request_temporary_view(
+                    key=f"rtc:{rtc.present}:{rtc.date}:{rtc.time}",
+                    view=SystemView(
+                        state=SystemState.IDLE,
+                        title="Reloj HW-084",
+                        detail="Detectado" if rtc.present else "No detectado",
+                        footer=(rtc.date or "Sin fecha RTC"),
+                    ),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+            elif target == "diagnostics.rwt":
+                status = schedule.status
+                expected = (
+                    status.expected_at.strftime("%H:%M")
+                    if status.expected_at is not None
+                    else "--:--"
+                )
+                messages.request_temporary_view(
+                    key=f"rwt-status:{status.state.value}:{expected}",
+                    view=SystemView(
+                        state=(
+                            SystemState.RECEIVER_FAULT
+                            if status.state is RwtScheduleState.MISSED
+                            else SystemState.IDLE
+                        ),
+                        title=f"RWT {status.state.value}",
+                        detail=f"Ultima {expected}",
+                        footer=f"Proxima {status.next_expected_at:%H:%M}",
+                    ),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+            elif target == "tests.audio":
+                alert_audio.play(EventType.START_RWT)
+                messages.request_temporary_view(
+                    key="test:audio",
+                    view=SystemView(
+                        state=SystemState.IDLE,
+                        title="Prueba de audio",
+                        detail="Reproduciendo RWT",
+                        footer="Jack de Raspberry Pi",
+                    ),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+            elif target in ("tests.display", "tests.buttons"):
+                label = "OLED operativa" if target == "tests.display" else "Boton detectado"
+                messages.request_temporary_view(
+                    key=target,
+                    view=SystemView(
+                        state=SystemState.IDLE,
+                        title="Autoprueba local",
+                        detail=label,
+                        footer="Recepcion continua",
+                    ),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+            elif target == "information.version":
+                messages.request_temporary_view(
+                    key=f"version:{_RELEASE_ROOT.name}",
+                    view=SystemView(
+                        state=SystemState.IDLE,
+                        title="ASM BLTeech v3",
+                        detail=f"Release {_RELEASE_ROOT.name}",
+                        footer="Python + systemd",
+                    ),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+            elif target == "information.carrier":
+                messages.request_temporary_view(
+                    key="carrier:v3.1-rev-a",
+                    view=SystemView(
+                        state=SystemState.IDLE,
+                        title="Carrier v3.1",
+                        detail="Revision A",
+                        footer="SA818 + WM8960",
+                    ),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+
+        def close_operator_menu() -> None:
+            nonlocal menu_deadline
+            if channel_editor.is_open:
+                decoder.pause()
+                try:
+                    channel_editor.handle(MenuCommand.GO_BACK)
+                except ChannelRollbackError as error:
+                    _append(
+                        log,
+                        clock,
+                        code="RECEIVER.CHANNEL.ROLLBACK.FAILED",
+                        severity=DiagnosticSeverity.WARNING,
+                        message=str(error),
+                    )
+            menu.close()
+            menu_deadline = None
+            messages.request_status(
+                duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds
+            )
+
         def show_history(command: MenuCommand) -> None:
             nonlocal history_index, history_open
             try:
@@ -334,12 +477,80 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
 
         def menu_command_received(command: MenuCommand) -> None:
-            nonlocal history_open
+            nonlocal history_open, menu_deadline
+            if channel_editor.is_open:
+                if command in (
+                    MenuCommand.CONFIRM,
+                    MenuCommand.MOVE_RIGHT,
+                    MenuCommand.GO_BACK,
+                    MenuCommand.MOVE_LEFT,
+                ):
+                    decoder.pause()
+                try:
+                    outcome = channel_editor.handle(command)
+                except ChannelRollbackError as error:
+                    _append(
+                        log,
+                        clock,
+                        code="RECEIVER.CHANNEL.ROLLBACK.FAILED",
+                        severity=DiagnosticSeverity.WARNING,
+                        message=str(error),
+                    )
+                    close_operator_menu()
+                    return
+                touch_menu()
+                if outcome is ChannelEditorOutcome.SAVED:
+                    selected = channel_editor.committed_channel
+                    _append(
+                        log,
+                        clock,
+                        code="RECEIVER.CHANNEL.CHANGED",
+                        severity=DiagnosticSeverity.INFO,
+                        message="Canal receptor verificado y guardado",
+                        context=(
+                            ("channel", selected.value),
+                            ("frequency_mhz", selected.frequency_text),
+                        ),
+                    )
+                    menu.refresh()
+                elif outcome is ChannelEditorOutcome.CLOSED:
+                    menu.refresh()
+                return
+
+            if menu.is_open:
+                action = menu.handle(command)
+                if not menu.is_open:
+                    menu_deadline = None
+                    messages.request_status(
+                        duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds
+                    )
+                    return
+                touch_menu()
+                if action is not None:
+                    show_action_view(action)
+                return
+
             if command in (MenuCommand.MOVE_DOWN, MenuCommand.MOVE_UP):
                 show_history(command)
                 return
+            if command in (MenuCommand.CONFIRM, MenuCommand.MOVE_RIGHT):
+                history_open = False
+                menu.open()
+                touch_menu()
+                return
+            if command is MenuCommand.TOGGLE_LISTEN:
+                messages.request_temporary_view(
+                    key="listen:status",
+                    view=SystemView(
+                        state=SystemState.IDLE,
+                        title="Escucha SAME",
+                        detail="Receptor activo",
+                        footer=f"Canal {channel_editor.committed_channel.value}",
+                    ),
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+                )
+                return
             if command not in (
-                MenuCommand.CONFIRM,
                 MenuCommand.GO_BACK,
                 MenuCommand.MOVE_LEFT,
             ):
@@ -454,6 +665,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
                     menu_buttons.close()
                     menu_buttons = None
+            if menu_deadline is not None and time.monotonic() >= menu_deadline:
+                close_operator_menu()
             messages.poll()
             if messages.display_update_pending:
                 _append(

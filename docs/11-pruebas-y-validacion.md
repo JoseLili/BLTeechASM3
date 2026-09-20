@@ -123,6 +123,9 @@ Primera evidencia registrada:
   hasta las `21:00`; EQW no satisface una ventana RWT y el siguiente horario
   cruza correctamente la medianoche. La vigencia `+0300` permanece anclada a
   la hora real de recepción.
+- `VALIDADO` mediante pruebas unitarias: las páginas del menú de producción se
+  encolan y no escriben I²C directamente; una EQW preempta una página visible,
+  el cierre descarta navegación anidada y el adaptador exige timeout positivo.
 - `EJECUTADO` el 2026-09-11: el carrier aceptó cabeceras sintéticas RWT y EQW,
   mantuvo cada parpadeo no bloqueante durante una ventana acotada de seis
   segundos y apagó los cuatro GPIO al cerrar. Sigue pendiente la confirmación

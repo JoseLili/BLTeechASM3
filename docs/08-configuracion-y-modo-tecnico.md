@@ -88,21 +88,18 @@ los botones operativos. Un EQW válido interrumpe el menú inmediatamente.
 controlador de menús. Escucha conmuta la rama de monitor local y nunca altera
 la señal entregada al decoder SAME.
 
-`IMPLEMENTADO`: navegación OLED inicial con menú raíz para Recepción, Audio,
-Diagnóstico, Sistema e Información, submenús, cursor desplazable, Enter,
+`IMPLEMENTADO`: navegación OLED de producción con menú raíz para Configuración,
+Estado del equipo, Pruebas e Información, submenús, cursor desplazable, Enter,
 Regresar y acción global de Escucha.
 
-`IMPLEMENTADO EN DAEMON`: con la OLED en standby, Enter muestra por diez
-segundos `Esperando evento` y la vigencia activa. Abajo abre el recibo SAME más
-reciente; Arriba/Abajo recorren hasta veinte recibos estructurados, colapsando
-repeticiones idénticas. Regresar o Izquierda vuelve al estado principal. Un
-EQW activo no puede ser ocultado por el historial y una alerta nueva siempre
+`IMPLEMENTADO EN DAEMON`: con la OLED en standby, Arriba/Abajo recorren hasta
+veinte recibos SAME estructurados y Enter abre el menú de producción. Toda
+vista de menú pasa por la misma cola que los avisos operativos: el daemon pausa
+el decoder únicamente durante la escritura I²C y limita la pantalla a diez
+segundos después de la última pulsación. Esto evita escritores concurrentes y
+mantiene acotado el tiempo con píxeles encendidos en Carrier Rev A. Un EQW no
+puede ser ocultado por el menú o el historial y una alerta nueva siempre
 preempta la consulta del operador.
-
-El árbol completo de configuración sigue disponible en la prueba integrada y
-se conectará al daemon después de consolidar el arbitraje único de OLED. Esto
-evita escritores I²C concurrentes y mantiene acotado el tiempo con píxeles
-encendidos en Carrier Rev A.
 
 `IMPLEMENTADO`: la hoja `Recepción → Canal C1-C7` abre un editor limitado a los
 siete canales congelados. Arriba/Abajo recorren la lista; el primer Enter aplica
@@ -110,8 +107,14 @@ el perfil temporal y exige readback del SA818; el segundo Enter guarda. Regresar
 antes de aplicar sale sin cambios y, después de verificar, restaura el canal
 confirmado anterior. Escucha conserva su acción global durante la edición.
 
-`PENDIENTE`: conectar las demás hojas con ajustes reales y definir el timeout
-general del menú de producción.
+`IMPLEMENTADO EN DAEMON`: `Configuración → Canal C1-C7` aplica, verifica y
+guarda de forma transaccional; el timeout o Regresar revierte un canal temporal.
+Estado expone SA818, WM8960, HW-084 y la supervisión horaria RWT. Pruebas ofrece
+comprobaciones acotadas de OLED, botón y pitido RWT por el jack de la Pi.
+
+`PENDIENTE`: definir qué parámetros de alarma pueden ser modificados por el
+operador sin debilitar la salida EQW. La hoja `Audio de alarma` es por ahora de
+solo lectura y presenta la salud de ALSA; no permite silenciar alertas críticas.
 
 ## Cambio transaccional de canal
 

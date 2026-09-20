@@ -100,6 +100,10 @@ class MenuController:
         self._stack = [_Frame(self._root)]
         return self._render()
 
+    def close(self) -> None:
+        """Close every page without rendering; the operational view resumes."""
+        self._stack.clear()
+
     def refresh(self) -> MenuView:
         """Render the current page after a temporary application view closes."""
         if not self._stack:
@@ -200,6 +204,60 @@ DEFAULT_MENU = MenuPage(
                 items=(
                     MenuItem(key="information.version", label="Version"),
                     MenuItem(key="information.carrier", label="Carrier Rev A"),
+                ),
+            ),
+        ),
+    ),
+)
+
+
+PRODUCTION_MENU = MenuPage(
+    title="Menu principal",
+    items=(
+        MenuItem(
+            key="configuration",
+            label="Configuracion",
+            child=MenuPage(
+                title="Configuracion",
+                items=(
+                    MenuItem(key="receiver.channel", label="Canal C1-C7"),
+                    MenuItem(key="audio.alarm", label="Audio de alarma"),
+                ),
+            ),
+        ),
+        MenuItem(
+            key="status",
+            label="Estado equipo",
+            child=MenuPage(
+                title="Estado equipo",
+                items=(
+                    MenuItem(key="receiver.status", label="Receptor SA818"),
+                    MenuItem(key="diagnostics.audio", label="Audio WM8960"),
+                    MenuItem(key="diagnostics.rtc", label="Reloj HW-084"),
+                    MenuItem(key="diagnostics.rwt", label="Recepcion RWT"),
+                ),
+            ),
+        ),
+        MenuItem(
+            key="tests",
+            label="Pruebas",
+            child=MenuPage(
+                title="Pruebas",
+                items=(
+                    MenuItem(key="tests.display", label="Pantalla OLED"),
+                    MenuItem(key="tests.audio", label="Audio de salida"),
+                    MenuItem(key="tests.buttons", label="Botones de menu"),
+                ),
+            ),
+        ),
+        MenuItem(
+            key="information",
+            label="Informacion",
+            child=MenuPage(
+                title="Informacion",
+                items=(
+                    MenuItem(key="information.version", label="Version software"),
+                    MenuItem(key="information.carrier", label="Carrier v3.1 Rev A"),
                 ),
             ),
         ),
