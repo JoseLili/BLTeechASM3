@@ -156,10 +156,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         _append(
             log,
             clock,
-            code="RTC.READY" if rtc.present and rtc.initialized_system_clock else "RTC.DEGRADED",
+            code="RTC.READY" if rtc.ready else "RTC.DEGRADED",
             severity=(
                 DiagnosticSeverity.INFO
-                if rtc.present and rtc.initialized_system_clock
+                if rtc.ready
                 else DiagnosticSeverity.WARNING
             ),
             message="RTC de respaldo inspeccionado al arrancar",
@@ -169,6 +169,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ("date", rtc.date),
                 ("time_utc", rtc.time),
                 ("hctosys", str(rtc.initialized_system_clock).lower()),
+                ("plausible_time", str(rtc.plausible_time).lower()),
             ),
         )
 
@@ -338,7 +339,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     view=SystemView(
                         state=SystemState.IDLE,
                         title="Reloj HW-084",
-                        detail="Detectado" if rtc.present else "No detectado",
+                        detail=(
+                            "Fecha valida"
+                            if rtc.ready
+                            else ("Fecha no valida" if rtc.present else "No detectado")
+                        ),
                         footer=(rtc.date or "Sin fecha RTC"),
                     ),
                     duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,

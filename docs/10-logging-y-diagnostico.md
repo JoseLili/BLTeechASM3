@@ -77,6 +77,11 @@ explícitamente `RTC.READY` o `RTC.DEGRADED` en cada arranque. Sigue pendiente
 una prueba de corte y reenergización con el HW-084 conectado desde el inicio
 para cerrar la evidencia de retención temporal sin red.
 
+`IMPLEMENTADO`: `hctosys=1` por sí solo no basta para declarar el RTC listo. La
+fecha interna debe ser plausible (2024 o posterior); un HW-084 presente que
+regresa a `2000-01-01`, como la unidad todavía sin pila, genera `RTC.DEGRADED`
+y aparece como `Fecha no valida` en el menú de estado.
+
 ## Supervisión y watchdogs
 
 Se separan responsabilidades:
