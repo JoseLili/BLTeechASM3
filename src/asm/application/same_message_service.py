@@ -49,6 +49,7 @@ class SameMessageService:
         rwt_notice_seconds: float,
         rwt_summary_seconds: float,
         standby_after_rwt: bool,
+        notice_observer: Callable[[SameNoticeRecord], object] | None = None,
     ) -> None:
         if rwt_notice_seconds <= 0:
             raise ValueError("rwt_notice_seconds must be greater than zero")
@@ -64,6 +65,8 @@ class SameMessageService:
         self._rwt_notice_seconds = rwt_notice_seconds
         self._rwt_summary_seconds = rwt_summary_seconds
         self._standby_after_rwt = standby_after_rwt
+        self._notice_observer = notice_observer
+        self._idle_footer = "Sin RWT vigente"
         self._visible_event: SameEventCode | None = None
         self._audio_event: SameEventCode | None | object = _UNSET
         self._notice_event: SameEventCode | None = None
@@ -87,7 +90,7 @@ class SameMessageService:
                 state=SystemState.IDLE,
                 title="Esperando evento",
                 detail="Escuchando SAME",
-                footer="Sin aviso vigente",
+                footer=self._idle_footer,
             ),
             log_change=False,
             phase="idle",
@@ -110,6 +113,16 @@ class SameMessageService:
             raise ValueError("duration_seconds must be greater than zero")
         self._temporary_view = None
         self._status_deadline = self._monotonic() + duration_seconds
+        self._present_if_changed()
+
+    def set_idle_footer(self, footer: str) -> None:
+        """Update the health summary without waking a standby OLED."""
+        if not footer.strip():
+            raise ValueError("footer must not be empty")
+        if footer == self._idle_footer:
+            return
+        self._idle_footer = footer
+        self._attempted_display = _UNSET
         self._present_if_changed()
 
     def request_temporary_view(
@@ -316,7 +329,7 @@ class SameMessageService:
                 state=SystemState.IDLE,
                 title="Esperando evento",
                 detail="Escuchando SAME",
-                footer="Sin aviso vigente",
+                footer=self._idle_footer,
             )
         elif snapshot.event is SameEventCode.RWT and phase == "summary":
             remaining_minutes = max(1, int((snapshot.expires_in_seconds + 59) // 60))
@@ -391,14 +404,13 @@ class SameMessageService:
 
     def _persist_header(self, header: SameHeader) -> None:
         received_at = self._clock.now()
+        record = SameNoticeRecord(
+            header=header,
+            received_at=received_at,
+            expires_at=received_at + header.validity,
+        )
         try:
-            self._notice_history.append(
-                SameNoticeRecord(
-                    header=header,
-                    received_at=received_at,
-                    expires_at=received_at + header.validity,
-                )
-            )
+            self._notice_history.append(record)
         except Exception as error:
             self._append(
                 code="SAME.HISTORY.WRITE.FAILED",
@@ -410,6 +422,8 @@ class SameMessageService:
                     ("error", str(error) or type(error).__name__),
                 ),
             )
+        if self._notice_observer is not None:
+            self._notice_observer(record)
 
     def _append(
         self,

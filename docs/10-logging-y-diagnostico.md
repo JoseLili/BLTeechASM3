@@ -6,6 +6,12 @@ restaurar vigencias y alimentar el historial del menú; no reemplaza la bitácor
 diagnóstica ni vuelve a reproducir audio después de un reinicio. Véase
 [ADR-019](adr/ADR-019-historial-y-restauracion-same.md).
 
+`IMPLEMENTADO`: el supervisor horario RWT compara las cabeceras completas con
+los ocho horarios locales diarios usando una ventana de ±15 minutos. Registra
+`RWT.SCHEDULE.RECEIVED` o `RWT.SCHEDULE.MISSED` con la hora nominal y la hora
+real, sin extender la vigencia SAME. Véase
+[ADR-020](adr/ADR-020-supervision-horaria-rwt.md).
+
 ## Objetivos
 
 `DECIDIDO`: conservar evidencia útil para operación, validación y certificación, aun sin internet. Auditoría, diagnóstico técnico y logs de depuración son flujos distintos aunque puedan compartir almacenamiento.

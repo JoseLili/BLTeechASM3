@@ -15,6 +15,11 @@ from asm.application.event_audio import EventAudioService
 from asm.application.menu_input import MenuCommand
 from asm.application.ports import SystemView
 from asm.application.receiver_service import ReceiverError, ReceiverService
+from asm.application.rwt_schedule_supervisor import (
+    RwtScheduleState,
+    RwtScheduleSupervisor,
+    RwtScheduleTransition,
+)
 from asm.application.same_history_presenter import (
     collapse_repetitions,
     empty_history_view,
@@ -26,6 +31,7 @@ from asm.config import DEFAULT_CONFIG
 from asm.domain.diagnostics import DiagnosticRecord, DiagnosticSeverity
 from asm.domain.indicators import IndicatorState
 from asm.domain.receiver import ReceiverProfile
+from asm.domain.same import SameNoticeRecord
 from asm.domain.states import SystemState
 from asm.infrastructure.audio.alsa_health import AlsaAudioHealth
 from asm.infrastructure.audio.alsa_player import AlsaAudioPlayer
@@ -206,6 +212,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         resources.callback(alert_audio.close)
         notice_history = JsonLineSameNoticeRepository(args.notice_history)
+        operator_timezone = clock.now().astimezone().tzinfo or UTC
+        schedule = RwtScheduleSupervisor(
+            clock=clock,
+            diagnostic_log=log,
+            operator_timezone=operator_timezone,
+        )
+        schedule_transitions: list[RwtScheduleTransition] = []
+
+        def notice_observed(record: SameNoticeRecord) -> None:
+            transition = schedule.observe(record)
+            if transition is not None:
+                schedule_transitions.append(transition)
+
         same_indicators = SameIndicatorSupervisor(indicators=panel, monotonic=time.monotonic)
         messages = SameMessageService(
             indicators=same_indicators,
@@ -218,9 +237,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             rwt_notice_seconds=DEFAULT_CONFIG.display.rwt_notice_seconds,
             rwt_summary_seconds=DEFAULT_CONFIG.display.rwt_summary_seconds,
             standby_after_rwt=args.oled_listen_mode == "standby",
+            notice_observer=notice_observed,
         )
         try:
-            restored = messages.restore_active(notice_history.recent(limit=1000))
+            recent_notices = notice_history.recent(limit=1000)
+            restored = messages.restore_active(recent_notices)
+            schedule.restore(recent_notices)
         except Exception as error:
             restored = 0
             _append(
@@ -246,7 +268,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         menu_buttons: Pcf8574MenuButtons | None = None
         history_index = 0
         history_open = False
-        operator_timezone = clock.now().astimezone().tzinfo or UTC
+
+        def apply_schedule_transition(transition: RwtScheduleTransition) -> None:
+            if transition.current_status.state is RwtScheduleState.RECEIVED:
+                messages.set_idle_footer("Sin RWT vigente")
+                return
+            expected_text = transition.expected_at.strftime("%H:%M")
+            messages.set_idle_footer(f"Falta RWT {expected_text}")
+            messages.request_temporary_view(
+                key=f"rwt-missed:{transition.expected_at.isoformat()}",
+                view=SystemView(
+                    state=SystemState.RECEIVER_FAULT,
+                    title="RWT NO RECIBIDO",
+                    detail=f"Esperada {expected_text}",
+                    footer="Revisar recepcion",
+                ),
+                duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
+            )
+
+        initial_schedule_transition = schedule.poll()
 
         def show_history(command: MenuCommand) -> None:
             nonlocal history_index, history_open
@@ -343,15 +383,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             monotonic=time.monotonic,
         )
         resources.callback(decoder.close)
-        messages.request_status(
-            duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds
-        )
+        if initial_schedule_transition is None:
+            messages.request_status(
+                duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds
+            )
+        else:
+            apply_schedule_transition(initial_schedule_transition)
         messages.flush_display()
         time.sleep(DEFAULT_CONFIG.display.idle_notice_seconds)
         messages.poll()
         messages.flush_display()
 
         last_decoder_state: DecoderServiceState | None = None
+        next_schedule_poll = time.monotonic()
         print(f"READY channel={channel.value} diagnostics={args.diagnostic_log}", flush=True)
         while not stop_requested:
             cycle = decoder.poll()
@@ -385,6 +429,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 outcome = messages.consume(line)
                 if outcome.value not in ("IGNORED",):
                     print(f"SAME outcome={outcome.value} line={line}", flush=True)
+            while schedule_transitions:
+                apply_schedule_transition(schedule_transitions.pop(0))
+            now_monotonic = time.monotonic()
+            if now_monotonic >= next_schedule_poll:
+                schedule_transition = schedule.poll()
+                if schedule_transition is not None:
+                    apply_schedule_transition(schedule_transition)
+                next_schedule_poll = now_monotonic + 1.0
             if menu_buttons is not None:
                 try:
                     menu_buttons.poll()

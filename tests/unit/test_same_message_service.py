@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from asm.application.ports import SystemView
 from asm.application.same_indicator_supervisor import (
@@ -41,6 +42,7 @@ def _service(
     *,
     standby_after_rwt: bool = True,
     history: InMemorySameNoticeRepository | None = None,
+    notice_observer: Any = None,
 ):  # type: ignore[no-untyped-def]
     monotonic = ManualMonotonic()
     panel = InMemoryIndicatorPanel()
@@ -60,6 +62,7 @@ def _service(
         rwt_notice_seconds=8.0,
         rwt_summary_seconds=5.0,
         standby_after_rwt=standby_after_rwt,
+        notice_observer=notice_observer,
     )
     return service, monotonic, panel, display, audio, log
 
@@ -96,6 +99,29 @@ def test_accepted_notice_is_persisted_and_restored_without_replaying_audio() -> 
     assert panel.history[-1] == IndicatorState(advisory=True, power=True)
     assert display.history[-1].footer == "RWT vigente 180m"
     assert audio.played == []
+
+
+def test_accepted_notice_notifies_schedule_observer() -> None:
+    observed = []
+    service, _monotonic, _panel, _display, _audio, _log = _service(
+        notice_observer=observed.append
+    )
+
+    service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
+
+    assert len(observed) == 1
+    assert observed[0].header.event.value == "RWT"
+
+
+def test_idle_health_footer_is_used_on_next_operator_wake() -> None:
+    service, _monotonic, _panel, display, _audio, _log = _service()
+    service.enter_standby()
+
+    service.set_idle_footer("Falta RWT 20:45")
+    service.request_status(duration_seconds=10.0)
+    service.flush_display()
+
+    assert display.history[-1].footer == "Falta RWT 20:45"
 
 
 def test_end_marker_is_logged_without_ending_validity() -> None:
