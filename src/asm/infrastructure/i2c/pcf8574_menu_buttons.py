@@ -147,6 +147,11 @@ class Pcf8574MenuButtons:
             self._on_command(command)
         return commands
 
+    @property
+    def read_pending(self) -> bool:
+        """Report an interrupt without performing any I2C transaction."""
+        return self._pending.is_set() and not self._closed
+
     def close(self) -> None:
         """Detach callbacks and release GPIO/I2C resources owned by the adapter."""
         with self._lock:

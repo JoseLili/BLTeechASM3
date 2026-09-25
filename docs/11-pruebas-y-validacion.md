@@ -48,6 +48,10 @@ Primera evidencia registrada:
 - `VALIDADO` mediante dobles: el adaptador GPIO produce los tres comandos semánticos, libera recursos y soporta `HOLD` mediante polling no bloqueante.
 - `VALIDADO`: PCF8574P `0x20` entrega botones de menú semánticos y la OLED mostró
   el árbol navegable completo en Carrier v3.1 Rev A.
+- `CORREGIDO` el 2026-09-24: una pulsación con el decoder I²S activo produjo
+  `MENU.INPUT.FAILED`/`EIO`, aunque `0x20`, `0x3C` y `0x57` reaparecieron al
+  detener el servicio. El daemon ahora consulta INT sin I²C, pausa el decoder
+  antes de leer el PCF8574 y recupera el teclado con backoff si la lectura falla.
 - `VALIDADO`: SA818S-V sobre `/dev/serial0` aceptó conexión, grupo GOLD C7,
   volumen 6 y filtros 0,0,0; `AT+DMOREADGROUP` devolvió
   `1,162.5500,162.5500,0000,0,0000`.

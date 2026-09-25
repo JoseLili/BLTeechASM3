@@ -57,6 +57,8 @@ from asm.infrastructure.storage.diagnostic_log import JsonLineDiagnosticLog
 from asm.infrastructure.storage.same_notice_history import JsonLineSameNoticeRepository
 
 _RELEASE_ROOT = Path(__file__).resolve().parents[1]
+_MENU_RETRY_INITIAL_SECONDS = 2.0
+_MENU_RETRY_MAX_SECONDS = 60.0
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -572,12 +574,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 message="Consulta de estado solicitada con el boton Enter",
             )
 
-        try:
-            menu_buttons = Pcf8574MenuButtons.open(
+        def open_menu_buttons() -> Pcf8574MenuButtons:
+            return Pcf8574MenuButtons.open(
                 on_command=menu_command_received,
                 debounce_seconds=DEFAULT_CONFIG.menu_buttons.debounce_seconds,
             )
+
+        menu_retry_at: float | None = None
+        menu_retry_seconds = _MENU_RETRY_INITIAL_SECONDS
+        try:
+            menu_buttons = open_menu_buttons()
         except Exception as error:
+            menu_retry_at = time.monotonic() + menu_retry_seconds
             _append(
                 log,
                 clock,
@@ -653,7 +661,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if schedule_transition is not None:
                     apply_schedule_transition(schedule_transition)
                 next_schedule_poll = now_monotonic + 1.0
-            if menu_buttons is not None:
+            if menu_buttons is not None and menu_buttons.read_pending:
+                _append(
+                    log,
+                    clock,
+                    code="MENU.INPUT.SAFE_WINDOW.STARTED",
+                    severity=DiagnosticSeverity.INFO,
+                    message="Decoder pausado para leer el teclado por I2C",
+                )
+                decoder.pause()
                 try:
                     menu_buttons.poll()
                 except Exception as error:
@@ -670,6 +686,49 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
                     menu_buttons.close()
                     menu_buttons = None
+                    menu_retry_at = now_monotonic + menu_retry_seconds
+                    menu_retry_seconds = min(
+                        menu_retry_seconds * 2,
+                        _MENU_RETRY_MAX_SECONDS,
+                    )
+            elif (
+                menu_buttons is None
+                and menu_retry_at is not None
+                and now_monotonic >= menu_retry_at
+            ):
+                decoder.pause()
+                try:
+                    recovered_menu_buttons = open_menu_buttons()
+                except Exception as error:
+                    _append(
+                        log,
+                        clock,
+                        code="MENU.INPUT.RETRY.FAILED",
+                        severity=DiagnosticSeverity.WARNING,
+                        message="El teclado I2C sigue sin responder; se reintentara",
+                        context=(
+                            ("error_type", type(error).__name__),
+                            ("error", str(error) or type(error).__name__),
+                            ("retry_seconds", f"{menu_retry_seconds:g}"),
+                        ),
+                    )
+                    menu_retry_at = now_monotonic + menu_retry_seconds
+                    menu_retry_seconds = min(
+                        menu_retry_seconds * 2,
+                        _MENU_RETRY_MAX_SECONDS,
+                    )
+                else:
+                    menu_buttons = recovered_menu_buttons
+                    resources.callback(recovered_menu_buttons.close)
+                    menu_retry_at = None
+                    menu_retry_seconds = _MENU_RETRY_INITIAL_SECONDS
+                    _append(
+                        log,
+                        clock,
+                        code="MENU.INPUT.RECOVERED",
+                        severity=DiagnosticSeverity.INFO,
+                        message="Teclado I2C recuperado automaticamente",
+                    )
             if menu_deadline is not None and time.monotonic() >= menu_deadline:
                 close_operator_menu()
             messages.poll()

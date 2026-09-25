@@ -88,10 +88,12 @@ def test_interrupt_callback_defers_i2c_until_poll() -> None:
     panel, bus, interrupt = _panel([0xFF, 0xFE], observed)
 
     interrupt.trigger()
+    assert panel.read_pending is True
     assert bus.reads == 1
     assert observed == []
 
     assert panel.poll() == (MenuCommand.MOVE_UP,)
+    assert panel.read_pending is False
     assert observed == [MenuCommand.MOVE_UP]
     assert bus.reads == 2
     panel.close()
@@ -132,3 +134,4 @@ def test_close_releases_owned_resources_and_is_idempotent() -> None:
     assert interrupt.closed is True
     assert interrupt.when_pressed is None
     assert bus.closed is True
+    assert panel.read_pending is False
