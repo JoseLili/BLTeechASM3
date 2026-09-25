@@ -285,6 +285,10 @@ def test_menu_page_uses_queued_display_and_eqw_preempts_it() -> None:
     service.flush_display()
     assert display.menu_history == [menu]
 
+    service.poll()
+    assert service.display_update_pending is False
+    assert display.menu_history == [menu]
+
     service.consume("EAS: ZCZC-CIV-EQW-000000+0001-832300-XDIF/005-")
     service.flush_display()
     assert display.history[-1].state is SystemState.EQW_ACTIVE

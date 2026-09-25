@@ -312,11 +312,15 @@ class SameMessageService:
 
         if status_requested and self._temporary_view is not None and not event_changed:
             key, view = self._temporary_view
+            phase = f"temporary:{key}"
+            display_key = (snapshot.event, phase)
+            if display_key == self._attempted_display:
+                return
             self._queue_display(
                 event=snapshot.event,
                 view=view,
                 log_change=False,
-                phase=f"temporary:{key}",
+                phase=phase,
             )
             return
 
