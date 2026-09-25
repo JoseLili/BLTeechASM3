@@ -48,6 +48,10 @@ Primera evidencia registrada:
 - `VALIDADO` mediante dobles: el adaptador GPIO produce los tres comandos semánticos, libera recursos y soporta `HOLD` mediante polling no bloqueante.
 - `VALIDADO`: PCF8574P `0x20` entrega botones de menú semánticos y la OLED mostró
   el árbol navegable completo en Carrier v3.1 Rev A.
+- `IMPLEMENTADO` mediante pruebas: el selector `auto` prefiere OLED y usa como
+  fallback una LCD 16×2 HD44780/PCF8574 en `0x27` o `0x3F`; presenta estados,
+  menú, diagnóstico, arranque y standby en dos filas. Queda pendiente la
+  validación HIL cuando se conecte una LCD de plaza.
 - `CORREGIDO` el 2026-09-24: una pulsación con el decoder I²S activo produjo
   `MENU.INPUT.FAILED`/`EIO`, aunque `0x20`, `0x3C` y `0x57` reaparecieron al
   detener el servicio. El daemon ahora consulta INT sin I²C, pausa el decoder

@@ -60,12 +60,17 @@ avisos SAME, simulacro/evacuación y fallas concurrentes.
 | SCL1 | GPIO3 | 5 |
 | WM8960 | `0x1A` | — |
 | PCF8574P, botones de configuración | `0x20` | INT en GPIO16/pin 36 |
-| OLED SSD1306 | `0x3C` | — |
+| OLED SSD1306/SH1106 | `0x3C` | — |
+| LCD 16×2 HD44780/PCF8574 | `0x27` o `0x3F` | — |
 | RTC DS3231 | `0x68` | — |
 | EEPROM AT24C32 | `0x57` | — |
 
-La interfaz local usa exclusivamente la OLED SSD1306; el LCD de versiones
-anteriores no forma parte de Carrier v3.1 Rev A.
+La interfaz local selecciona automáticamente OLED o LCD 16×2. En instalaciones
+con ambas conectadas se prefiere OLED; una configuración explícita puede forzar
+`oled`, `lcd` o funcionamiento `none`. La LCD reutiliza las mismas vistas,
+prioridades y ventanas seguras de escritura I²C. Su backpack no puede usar
+`0x20`, reservado para los botones, y sus pull-ups SDA/SCL no deben llevar el
+bus de la Raspberry Pi a 5 V.
 
 #### Botones de configuración PCF8574P
 

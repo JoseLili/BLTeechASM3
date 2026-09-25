@@ -133,12 +133,16 @@ Dispositivos previstos:
 
 | Dispositivo | Dirección actual |
 |---|---:|
-| OLED SSD1306 | 0x3C |
-| LCD PCF8574, si se usa | 0x27 |
+| OLED SSD1306/SH1106 | 0x3C |
+| LCD 16×2 HD44780/PCF8574 | 0x27 o 0x3F |
 | RTC DS3231 | 0x68 |
 | EEPROM AT24C32 | 0x57 |
 
 Debe existir un único diseño consciente de pull-ups. Los módulos I²C pueden incluir resistencias propias en paralelo.
+El daemon usa `--display-type auto`: prefiere OLED si está presente y, si no,
+busca una LCD 16×2 en `0x27`/`0x3F`. El PCF8574 del teclado ocupa `0x20`, por
+lo que esa dirección queda prohibida para el backpack de la LCD. SDA/SCL deben
+permanecer referidos a 3.3 V aunque el módulo LCD requiera otra alimentación.
 
 ### Señales Mean Well actualmente mapeadas
 
@@ -376,6 +380,8 @@ La documentación debe distinguir:
   `arecord → SoX → multimon-ng`, reinicio con backoff y unidad systemd.
 - Menú OLED C1-C7 y botones directos GPIO17/GPIO22/GPIO27 integrados en el
   daemon: audio → LED → OLED, bitácora JSONL y preempción segura por EQW.
+- Selector de pantalla `auto|oled|lcd|none` y backend LCD 16×2
+  HD44780/PCF8574; las vistas y el menú se condensan automáticamente a dos filas.
 - HW-084/DS3231 expuesto como `/dev/rtc0`; el kernel inicializa la hora civil y
   el daemon conserva evidencia RTC en el log de arranque.
 

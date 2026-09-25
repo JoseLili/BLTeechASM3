@@ -50,8 +50,8 @@ from asm.infrastructure.audio.alsa_health import AlsaAudioHealth
 from asm.infrastructure.audio.alsa_player import AlsaAudioPlayer
 from asm.infrastructure.audio.same_stream import MultimonSameStream
 from asm.infrastructure.console import SystemClock
-from asm.infrastructure.display.luma_oled import LumaOledDisplay
 from asm.infrastructure.display.null_display import NullDisplay
+from asm.infrastructure.display.selector import RuntimeDisplay, open_runtime_display
 from asm.infrastructure.display.startup_animation import StartupAnimator
 from asm.infrastructure.gpio.button_panel import GpioButtonPanel
 from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
@@ -93,16 +93,30 @@ def _parser() -> argparse.ArgumentParser:
         help="Historial persistente de cabeceras SAME aceptadas",
     )
     parser.add_argument(
+        "--display-type",
+        choices=("auto", "oled", "lcd", "none"),
+        default="auto",
+        help="Seleccion automatica o forzada de OLED/LCD 16x2",
+    )
+    parser.add_argument(
         "--oled-controller",
         choices=("sh1106", "ssd1306"),
         default="sh1106",
         help="Controlador de la OLED 128x64 instalada",
     )
     parser.add_argument(
+        "--lcd-address",
+        type=_i2c_address,
+        default=None,
+        help="Direccion PCF8574 de LCD 16x2 (0x27 o 0x3F); auto si se omite",
+    )
+    parser.add_argument(
+        "--display-listen-mode",
         "--oled-listen-mode",
+        dest="display_listen_mode",
         choices=("standby", "continuous"),
         default="standby",
-        help="Apaga pixeles al escuchar (grande) o mantiene estado visible (pequena)",
+        help="Apaga pantalla/backlight al escuchar o mantiene el estado visible",
     )
     parser.add_argument(
         "--audio-directory",
@@ -116,6 +130,13 @@ def _parser() -> argparse.ArgumentParser:
         help="Dispositivo ALSA explicito para los WAV de alerta",
     )
     return parser
+
+
+def _i2c_address(value: str) -> int:
+    address = int(value, 0)
+    if address not in (0x27, 0x3F):
+        raise argparse.ArgumentTypeError("LCD address must be 0x27 or 0x3F")
+    return address
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -133,13 +154,28 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     with ExitStack() as resources:
         try:
-            display: LumaOledDisplay | NullDisplay = LumaOledDisplay.open(
+            selection = open_runtime_display(
+                mode=args.display_type,
                 branding=DEFAULT_CONFIG.branding,
-                controller=args.oled_controller,
+                oled_controller=args.oled_controller,
+                lcd_address=args.lcd_address,
             )
+            display: RuntimeDisplay = selection.display
         except Exception as error:
             _log_display_failure(log, clock, stage="open", error=error)
             display = NullDisplay()
+        else:
+            _append(
+                log,
+                clock,
+                code="DISPLAY.READY",
+                severity=DiagnosticSeverity.INFO,
+                message="Pantalla de operador seleccionada",
+                context=(("kind", selection.kind), ("detail", selection.detail)),
+            )
+        close_display = getattr(display, "close", None)
+        if callable(close_display):
+            resources.callback(close_display)
         resources.callback(_clear_display_safely, display, log, clock)
         panel = GpioIndicatorPanel.open()
         resources.callback(panel.close)
@@ -261,7 +297,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             monotonic=time.monotonic,
             rwt_notice_seconds=DEFAULT_CONFIG.display.rwt_notice_seconds,
             rwt_summary_seconds=DEFAULT_CONFIG.display.rwt_summary_seconds,
-            standby_after_rwt=args.oled_listen_mode == "standby",
+            standby_after_rwt=args.display_listen_mode == "standby",
             local_notice_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
             notice_observer=notice_observed,
         )
@@ -434,7 +470,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
                 )
             elif target in ("tests.display", "tests.buttons"):
-                label = "OLED operativa" if target == "tests.display" else "Boton detectado"
+                label = "Pantalla operativa" if target == "tests.display" else "Boton detectado"
                 messages.request_temporary_view(
                     key=target,
                     view=SystemView(
@@ -860,7 +896,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _show_safely(
-    display: LumaOledDisplay | NullDisplay,
+    display: RuntimeDisplay,
     view: SystemView,
     *,
     log: JsonLineDiagnosticLog,
@@ -874,7 +910,7 @@ def _show_safely(
 
 
 def _clear_display_safely(
-    display: LumaOledDisplay | NullDisplay,
+    display: RuntimeDisplay,
     log: JsonLineDiagnosticLog,
     clock: SystemClock,
 ) -> None:
