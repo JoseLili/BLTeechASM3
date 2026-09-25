@@ -268,6 +268,62 @@ def test_active_eqw_rejects_operator_history_override() -> None:
     assert display.history[-1].state is SystemState.EQW_ACTIVE
 
 
+def test_local_evacuation_starts_audio_then_led_and_uses_safe_display_queue() -> None:
+    service, _monotonic, panel, display, audio, log = _service()
+
+    assert service.start_local_event(EventType.START_EVACUACION) is True
+
+    assert service.active_local_event is EventType.START_EVACUACION
+    assert audio.played == [EventType.START_EVACUACION]
+    assert panel.history[-1] == IndicatorState(watch=True, power=True)
+    assert display.history == []
+    assert service.flush_display() is True
+    assert display.history[-1].state is SystemState.EVACUACION_ACTIVE
+    assert any(record.code == "PANEL.EVENT.STARTED" for record in log.records)
+
+
+def test_stop_clears_only_local_event_and_preserves_active_rwt() -> None:
+    service, _monotonic, panel, display, audio, _log = _service()
+    service.consume("EAS: ZCZC-CIV-RWT-000000+0300-832300-XDIF/005-")
+    service.start_local_event(EventType.START_SIMULACRO)
+
+    assert service.stop_local_event() is True
+    assert service.active_local_event is None
+    assert service.active_same_event.value == "RWT"
+    assert panel.history[-1] == IndicatorState(advisory=True, power=True)
+    assert audio.stop_calls == 1
+    service.flush_display()
+    assert display.history[-1].state is SystemState.STOPPED
+
+
+def test_eqw_preempts_local_activation_and_cannot_be_stopped_locally() -> None:
+    service, _monotonic, panel, display, audio, log = _service()
+    service.start_local_event(EventType.START_SIMULACRO)
+
+    service.consume("EAS: ZCZC-CIV-EQW-000000+0001-832300-XDIF/005-")
+    service.flush_display()
+
+    assert service.active_local_event is None
+    assert service.stop_local_event() is False
+    assert audio.played == [EventType.START_SIMULACRO, EventType.START_EQW]
+    assert panel.history[-1] == IndicatorState(warning=True, power=True)
+    assert display.history[-1].state is SystemState.EQW_ACTIVE
+    assert any(record.code == "PANEL.EVENT.PREEMPTED" for record in log.records)
+
+
+def test_local_view_enters_standby_after_safe_notice_but_led_remains_active() -> None:
+    service, monotonic, panel, display, _audio, _log = _service()
+    service.start_local_event(EventType.START_SIMULACRO)
+    service.flush_display()
+    monotonic.current = 10.0
+
+    service.poll()
+    service.flush_display()
+
+    assert display.standby_calls == 1
+    assert panel.history[-1] == IndicatorState(watch=True, power=True)
+
+
 def test_menu_page_uses_queued_display_and_eqw_preempts_it() -> None:
     service, _monotonic, _panel, display, _audio, _log = _service()
     menu = MenuView(

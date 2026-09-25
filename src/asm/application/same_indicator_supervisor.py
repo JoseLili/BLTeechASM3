@@ -5,10 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from enum import StrEnum
 
+from asm.application.indicator_policy import indicator_state_for
 from asm.application.ports import IndicatorPort
 from asm.domain.indicators import IndicatorState
 from asm.domain.same import (
     SameEndOfMessage,
+    SameEventCode,
     SameHeader,
     SameIndicatorSnapshot,
     SameNoticeReceipt,
@@ -16,6 +18,7 @@ from asm.domain.same import (
     SameParseError,
     parse_multimon_same_line,
 )
+from asm.domain.states import EventType, SystemState
 
 
 class SameLineOutcome(StrEnum):
@@ -43,7 +46,21 @@ class SameIndicatorSupervisor:
             blink_half_period_seconds=blink_half_period_seconds,
             duplicate_window_seconds=duplicate_window_seconds,
         )
+        self._local_event: EventType | None = None
         self._last_indicators: IndicatorState | None = None
+
+    def set_local_event(self, event: EventType | None) -> None:
+        """Overlay a local activation unless an EQW currently has priority."""
+        if event not in (
+            None,
+            EventType.START_SIMULACRO,
+            EventType.START_EVACUACION,
+        ):
+            raise ValueError("local event must be Simulacro, Evacuacion, or None")
+        if event is self._local_event:
+            return
+        self._local_event = event
+        self.apply_snapshot(self.snapshot())
 
     def handle_line(self, line: str) -> SameLineOutcome:
         """Consume one decoder line; invalid candidates fail closed."""
@@ -77,9 +94,17 @@ class SameIndicatorSupervisor:
 
     def apply_snapshot(self, snapshot: SameIndicatorSnapshot) -> None:
         """Apply a previously inspected snapshot to the physical panel."""
-        if snapshot.indicators != self._last_indicators:
-            self._indicators.apply(snapshot.indicators)
-            self._last_indicators = snapshot.indicators
+        effective = snapshot.indicators
+        if snapshot.event is not SameEventCode.EQW and self._local_event is not None:
+            local_state = (
+                SystemState.SIMULACRO_ACTIVE
+                if self._local_event is EventType.START_SIMULACRO
+                else SystemState.EVACUACION_ACTIVE
+            )
+            effective = indicator_state_for(local_state)
+        if effective != self._last_indicators:
+            self._indicators.apply(effective)
+            self._last_indicators = effective
 
     def poll(self) -> SameIndicatorSnapshot:
         """Advance blink/expiry state without blocking the application loop."""

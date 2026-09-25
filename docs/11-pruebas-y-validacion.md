@@ -87,6 +87,11 @@ Primera evidencia registrada:
   evacuación y Paro rechazado durante EQW.
 - `VALIDADO` mediante dobles: los comandos GPIO conservan origen `LOCAL_PANEL` y
   la auditoría JSONL persiste decisiones aceptadas y rechazadas con `fsync`.
+- `IMPLEMENTADO` el 2026-09-24: GPIO17/Simulacro, GPIO22/Evacuación y
+  GPIO27/Paro forman parte del daemon de producción. Evacuación preempta
+  Simulacro, EQW preempta ambos, Paro nunca cancela SAME y cada decisión queda
+  en `audit.jsonl`; queda pendiente la pulsación HIL de los tres botones bajo
+  `asm-blteech.service`.
 - `VALIDADO` el 2026-09-10: la OLED volvió a aparecer físicamente en `0x3C`,
   mostró el smoke test durante tres segundos y se limpió al finalizar.
 - `EJECUTADO` el 2026-09-10: OLED y GPIO recorrieron sin error BOOT, SELF_TEST,
@@ -181,7 +186,8 @@ Daemon receptor en primer plano para una prueba acotada:
 ```bash
 PYTHONPATH=src /usr/bin/python3 scripts/asm_daemon.py \
   --state-file /tmp/asm-receiver.json \
-  --diagnostic-log /tmp/asm-diagnostics.jsonl
+  --diagnostic-log /tmp/asm-diagnostics.jsonl \
+  --audit-log /tmp/asm-audit.jsonl
 ```
 
 ### LAD-120A real

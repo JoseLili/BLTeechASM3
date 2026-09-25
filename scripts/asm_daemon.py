@@ -9,8 +9,10 @@ from collections.abc import Sequence
 from contextlib import ExitStack
 from datetime import UTC
 from pathlib import Path
+from queue import Empty, SimpleQueue
 
 from asm.application.audio_presenter import audio_status_view
+from asm.application.button_policy import ButtonCommand
 from asm.application.channel_editor import (
     ChannelEditorOutcome,
     ChannelRollbackError,
@@ -20,7 +22,9 @@ from asm.application.decoder_supervisor import DecoderServiceState, DecoderSuper
 from asm.application.event_audio import EventAudioService
 from asm.application.menu_controller import PRODUCTION_MENU, MenuAction, MenuController
 from asm.application.menu_input import MenuCommand
+from asm.application.panel_command_router import PanelCommandRouter
 from asm.application.ports import SystemView
+from asm.application.production_panel_controller import ProductionPanelController
 from asm.application.receiver_service import ReceiverError, ReceiverService
 from asm.application.rwt_schedule_supervisor import (
     RwtScheduleState,
@@ -39,8 +43,9 @@ from asm.config import DEFAULT_CONFIG
 from asm.domain.diagnostics import DiagnosticRecord, DiagnosticSeverity
 from asm.domain.indicators import IndicatorState
 from asm.domain.receiver import ReceiverProfile
-from asm.domain.same import SameNoticeRecord
+from asm.domain.same import SameEventCode, SameNoticeRecord
 from asm.domain.states import EventType, SystemState
+from asm.domain.transitions import InvalidTransition
 from asm.infrastructure.audio.alsa_health import AlsaAudioHealth
 from asm.infrastructure.audio.alsa_player import AlsaAudioPlayer
 from asm.infrastructure.audio.same_stream import MultimonSameStream
@@ -48,10 +53,12 @@ from asm.infrastructure.console import SystemClock
 from asm.infrastructure.display.luma_oled import LumaOledDisplay
 from asm.infrastructure.display.null_display import NullDisplay
 from asm.infrastructure.display.startup_animation import StartupAnimator
+from asm.infrastructure.gpio.button_panel import GpioButtonPanel
 from asm.infrastructure.gpio.indicator_panel import GpioIndicatorPanel
 from asm.infrastructure.i2c.pcf8574_menu_buttons import Pcf8574MenuButtons
 from asm.infrastructure.receiver.sa818_serial import Sa818SerialReceiver
 from asm.infrastructure.rtc_health import read_rtc_status
+from asm.infrastructure.storage.audit_log import JsonLineAuditLog
 from asm.infrastructure.storage.channel_config import JsonReceiverChannelRepository
 from asm.infrastructure.storage.diagnostic_log import JsonLineDiagnosticLog
 from asm.infrastructure.storage.same_notice_history import JsonLineSameNoticeRepository
@@ -72,6 +79,12 @@ def _parser() -> argparse.ArgumentParser:
         "--diagnostic-log",
         type=Path,
         default=Path.home() / ".local/state/asm-blteech/diagnostics.jsonl",
+    )
+    parser.add_argument(
+        "--audit-log",
+        type=Path,
+        default=Path.home() / ".local/state/asm-blteech/audit.jsonl",
+        help="Bitacora persistente de decisiones de los botones operativos",
     )
     parser.add_argument(
         "--notice-history",
@@ -249,8 +262,45 @@ def main(argv: Sequence[str] | None = None) -> int:
             rwt_notice_seconds=DEFAULT_CONFIG.display.rwt_notice_seconds,
             rwt_summary_seconds=DEFAULT_CONFIG.display.rwt_summary_seconds,
             standby_after_rwt=args.oled_listen_mode == "standby",
+            local_notice_seconds=DEFAULT_CONFIG.display.idle_notice_seconds,
             notice_observer=notice_observed,
         )
+        panel_commands: SimpleQueue[ButtonCommand] = SimpleQueue()
+        panel_controller = ProductionPanelController(
+            messages=messages,
+            clock=clock,
+            event_log=JsonLineAuditLog(args.audit_log),
+        )
+        panel_router = PanelCommandRouter(panel_controller)
+        operator_buttons: GpioButtonPanel | None = None
+        try:
+            operator_buttons = GpioButtonPanel.open(
+                config=DEFAULT_CONFIG.buttons,
+                monotonic=time.monotonic,
+                on_command=panel_commands.put,
+            )
+        except Exception as error:
+            _append(
+                log,
+                clock,
+                code="PANEL.INPUT.UNAVAILABLE",
+                severity=DiagnosticSeverity.WARNING,
+                message="Botones Simulacro/Evacuacion/Paro no disponibles",
+                context=(
+                    ("error_type", type(error).__name__),
+                    ("error", str(error) or type(error).__name__),
+                ),
+            )
+        else:
+            resources.callback(operator_buttons.close)
+            _append(
+                log,
+                clock,
+                code="PANEL.INPUT.READY",
+                severity=DiagnosticSeverity.INFO,
+                message="Botones Simulacro/Evacuacion/Paro activos",
+                context=(("gpio", "17,22,27"),),
+            )
         try:
             recent_notices = notice_history.recent(limit=1000)
             restored = messages.restore_active(recent_notices)
@@ -485,6 +535,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         def menu_command_received(command: MenuCommand) -> None:
             nonlocal history_open, menu_deadline
+            if (
+                messages.active_local_event is not None
+                or messages.active_same_event is SameEventCode.EQW
+            ):
+                messages.request_status(
+                    duration_seconds=DEFAULT_CONFIG.display.idle_notice_seconds
+                )
+                return
             if channel_editor.is_open:
                 if command in (
                     MenuCommand.CONFIRM,
@@ -656,6 +714,52 @@ def main(argv: Sequence[str] | None = None) -> int:
             while schedule_transitions:
                 apply_schedule_transition(schedule_transitions.pop(0))
             now_monotonic = time.monotonic()
+            if operator_buttons is not None:
+                operator_buttons.poll()
+            while True:
+                try:
+                    panel_command = panel_commands.get_nowait()
+                except Empty:
+                    break
+                if menu.is_open or channel_editor.is_open:
+                    close_operator_menu()
+                try:
+                    panel_transition = panel_router.handle(panel_command)
+                except InvalidTransition as error:
+                    _append(
+                        log,
+                        clock,
+                        code="PANEL.COMMAND.REJECTED",
+                        severity=DiagnosticSeverity.WARNING,
+                        message="Comando del panel rechazado por prioridad",
+                        context=(
+                            ("command", panel_command.value),
+                            ("state", error.state.value),
+                        ),
+                    )
+                    print(
+                        f"PANEL rejected={panel_command.value} state={error.state.value}",
+                        flush=True,
+                    )
+                else:
+                    _append(
+                        log,
+                        clock,
+                        code="PANEL.COMMAND.ACCEPTED",
+                        severity=DiagnosticSeverity.INFO,
+                        message="Comando del panel aplicado",
+                        context=(
+                            ("command", panel_command.value),
+                            ("previous", panel_transition.previous_state.value),
+                            ("current", panel_transition.resulting_state.value),
+                        ),
+                    )
+                    print(
+                        "PANEL "
+                        f"accepted={panel_command.value} "
+                        f"state={panel_transition.resulting_state.value}",
+                        flush=True,
+                    )
             if now_monotonic >= next_schedule_poll:
                 schedule_transition = schedule.poll()
                 if schedule_transition is not None:

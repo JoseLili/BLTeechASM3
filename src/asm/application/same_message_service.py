@@ -50,12 +50,15 @@ class SameMessageService:
         rwt_notice_seconds: float,
         rwt_summary_seconds: float,
         standby_after_rwt: bool,
+        local_notice_seconds: float = 10.0,
         notice_observer: Callable[[SameNoticeRecord], object] | None = None,
     ) -> None:
         if rwt_notice_seconds <= 0:
             raise ValueError("rwt_notice_seconds must be greater than zero")
         if rwt_summary_seconds <= 0:
             raise ValueError("rwt_summary_seconds must be greater than zero")
+        if local_notice_seconds <= 0:
+            raise ValueError("local_notice_seconds must be greater than zero")
         self._indicators = indicators
         self._clock = clock
         self._display = display
@@ -66,6 +69,7 @@ class SameMessageService:
         self._rwt_notice_seconds = rwt_notice_seconds
         self._rwt_summary_seconds = rwt_summary_seconds
         self._standby_after_rwt = standby_after_rwt
+        self._local_notice_seconds = local_notice_seconds
         self._notice_observer = notice_observer
         self._idle_footer = "Sin RWT vigente"
         self._visible_event: SameEventCode | None = None
@@ -73,12 +77,24 @@ class SameMessageService:
         self._notice_event: SameEventCode | None = None
         self._notice_deadline: float | None = None
         self._summary_deadline: float | None = None
+        self._local_event: EventType | None = None
+        self._local_notice_deadline: float | None = None
         self._status_deadline: float | None = None
         self._temporary_view: tuple[str, SystemView | MenuView] | None = None
         self._attempted_display: tuple[SameEventCode | None, str] | object = _UNSET
         self._pending_display: (
             tuple[SameEventCode | None, SystemView | MenuView | None, bool] | None
         ) = None
+
+    @property
+    def active_local_event(self) -> EventType | None:
+        """Return the currently latched local activation, if any."""
+        return self._local_event
+
+    @property
+    def active_same_event(self) -> SameEventCode | None:
+        """Return the highest-priority unexpired SAME event."""
+        return self._indicators.snapshot().event
 
     @property
     def display_update_pending(self) -> bool:
@@ -118,6 +134,65 @@ class SameMessageService:
         self._status_deadline = self._monotonic() + duration_seconds
         self._present_if_changed()
 
+    def start_local_event(self, event: EventType) -> bool:
+        """Latch Simulacro/Evacuacion without ever overriding an active EQW."""
+        if event not in (
+            EventType.START_SIMULACRO,
+            EventType.START_EVACUACION,
+        ):
+            raise ValueError("local event must be Simulacro or Evacuacion")
+        snapshot = self._indicators.snapshot()
+        if snapshot.event is SameEventCode.EQW:
+            return False
+
+        self._temporary_view = None
+        self._status_deadline = None
+        self._local_event = event
+        self._local_notice_deadline = self._monotonic() + self._local_notice_seconds
+        self._attempted_display = _UNSET
+        # The operational contract requires audio first, then LEDs and display.
+        self._audio.play(event)
+        self._indicators.set_local_event(event)
+        self._present_if_changed(snapshot)
+        self._append(
+            component="operator_panel",
+            code="PANEL.EVENT.STARTED",
+            severity=DiagnosticSeverity.INFO,
+            message="Activacion local iniciada",
+            context=(("event", event.value),),
+        )
+        return True
+
+    def stop_local_event(self) -> bool:
+        """Stop only a local activation; SAME notices remain authoritative."""
+        event = self._local_event
+        if event is None:
+            return False
+        self._local_event = None
+        self._local_notice_deadline = None
+        self._audio.stop()
+        self._indicators.set_local_event(None)
+        self._temporary_view = (
+            "local:stopped",
+            SystemView(
+                state=SystemState.STOPPED,
+                title="Evento detenido",
+                detail="Paro registrado",
+                footer="Recepcion SAME activa",
+            ),
+        )
+        self._status_deadline = self._monotonic() + self._local_notice_seconds
+        self._attempted_display = _UNSET
+        self._present_if_changed()
+        self._append(
+            component="operator_panel",
+            code="PANEL.EVENT.STOPPED",
+            severity=DiagnosticSeverity.INFO,
+            message="Activacion local detenida",
+            context=(("event", event.value),),
+        )
+        return True
+
     def set_idle_footer(self, footer: str) -> None:
         """Update the health summary without waking a standby OLED."""
         if not footer.strip():
@@ -140,7 +215,10 @@ class SameMessageService:
             raise ValueError("key must not be empty")
         if duration_seconds <= 0:
             raise ValueError("duration_seconds must be greater than zero")
-        if self._indicators.snapshot().event is SameEventCode.EQW:
+        if (
+            self._indicators.snapshot().event is SameEventCode.EQW
+            or self._local_event is not None
+        ):
             return False
         self._temporary_view = (key, view)
         self._status_deadline = self._monotonic() + duration_seconds
@@ -159,7 +237,10 @@ class SameMessageService:
             raise ValueError("key must not be empty")
         if duration_seconds <= 0:
             raise ValueError("duration_seconds must be greater than zero")
-        if self._indicators.snapshot().event is SameEventCode.EQW:
+        if (
+            self._indicators.snapshot().event is SameEventCode.EQW
+            or self._local_event is not None
+        ):
             return False
         self._temporary_view = (key, view)
         self._status_deadline = self._monotonic() + duration_seconds
@@ -220,6 +301,7 @@ class SameMessageService:
         outcome = self._indicators.track_header(decoded)
         snapshot = self._indicators.snapshot()
         self._start_audio_if_changed(snapshot)
+        self._preempt_local_if_eqw(snapshot)
         if outcome is SameLineOutcome.ACCEPTED:
             self._persist_header(decoded)
         self._log_header(decoded, outcome)
@@ -231,6 +313,7 @@ class SameMessageService:
         self._audio.poll()
         snapshot = self._indicators.snapshot()
         self._start_audio_if_changed(snapshot)
+        self._preempt_local_if_eqw(snapshot)
         self._indicators.apply_snapshot(snapshot)
         self._present_if_changed(snapshot)
 
@@ -310,7 +393,25 @@ class SameMessageService:
                 else None
             )
 
-        if status_requested and self._temporary_view is not None and not event_changed:
+        local_visible = self._local_event is not None and snapshot.event is not SameEventCode.EQW
+        local_event = self._local_event
+        local_notice_visible = (
+            local_visible
+            and (
+                status_requested
+                or (
+                    self._local_notice_deadline is not None
+                    and now < self._local_notice_deadline
+                )
+            )
+        )
+
+        if (
+            status_requested
+            and self._temporary_view is not None
+            and not event_changed
+            and not local_visible
+        ):
             key, view = self._temporary_view
             phase = f"temporary:{key}"
             display_key = (snapshot.event, phase)
@@ -324,7 +425,12 @@ class SameMessageService:
             )
             return
 
-        if status_requested and snapshot.event is None:
+        if local_notice_visible:
+            assert local_event is not None
+            phase = f"local:{local_event.value}"
+        elif local_visible:
+            phase = "standby"
+        elif status_requested and snapshot.event is None:
             phase = "idle"
         elif status_requested and snapshot.event is SameEventCode.RWT:
             phase = "summary"
@@ -352,7 +458,21 @@ class SameMessageService:
                 phase=phase,
             )
             return
-        if snapshot.event is None:
+        if local_notice_visible:
+            assert self._local_event is not None
+            if self._local_event is EventType.START_SIMULACRO:
+                state = SystemState.SIMULACRO_ACTIVE
+                title = "SIMULACRO"
+            else:
+                state = SystemState.EVACUACION_ACTIVE
+                title = "EVACUACION"
+            view = SystemView(
+                state=state,
+                title=title,
+                detail="Activacion local",
+                footer="Paro para detener",
+            )
+        elif snapshot.event is None:
             view = SystemView(
                 state=SystemState.IDLE,
                 title="Esperando evento",
@@ -394,7 +514,16 @@ class SameMessageService:
             return
         self._audio_event = snapshot.event
         if snapshot.event is None:
-            self._audio.stop()
+            if self._local_event is None:
+                self._audio.stop()
+            return
+        if (
+            self._local_event is EventType.START_SIMULACRO
+            and snapshot.event is SameEventCode.RWT
+        ) or (
+            self._local_event is EventType.START_EVACUACION
+            and snapshot.event is SameEventCode.RWT
+        ):
             return
         event = (
             EventType.START_RWT
@@ -402,6 +531,25 @@ class SameMessageService:
             else EventType.START_EQW
         )
         self._audio.play(event)
+
+    def _preempt_local_if_eqw(self, snapshot: SameIndicatorSnapshot) -> None:
+        """Drop a local latch when the radio supplies a higher-priority EQW."""
+        event = self._local_event
+        if event is None or snapshot.event is not SameEventCode.EQW:
+            return
+        self._local_event = None
+        self._local_notice_deadline = None
+        self._temporary_view = None
+        self._status_deadline = None
+        self._attempted_display = _UNSET
+        self._indicators.set_local_event(None)
+        self._append(
+            component="operator_panel",
+            code="PANEL.EVENT.PREEMPTED",
+            severity=DiagnosticSeverity.WARNING,
+            message="Activacion local interrumpida por EQW",
+            context=(("event", event.value),),
+        )
 
     def _queue_display(
         self,
@@ -456,6 +604,7 @@ class SameMessageService:
     def _append(
         self,
         *,
+        component: str = "same_decoder",
         code: str,
         severity: DiagnosticSeverity,
         message: str,
@@ -464,7 +613,7 @@ class SameMessageService:
         self._diagnostic_log.append(
             DiagnosticRecord(
                 occurred_at=self._clock.now(),
-                component="same_decoder",
+                component=component,
                 code=code,
                 severity=severity,
                 message=message,

@@ -224,24 +224,11 @@ preliminar de cuatro GPIO.
 | Evacuación | Iniciar evacuación |
 | Paro | Detener el evento permitido y generar bitácora |
 
-### Modo técnico
+### Menú técnico
 
-El cambio de canal es una función de instalación y mantenimiento.
-
-Condiciones de acceso:
-
-- Sistema en espera.
-- Sin evento activo.
-- Combinación prolongada, por ejemplo Simulacro + Paro.
-
-Funciones dentro del menú:
-
-| Botón físico | Función técnica |
-|---|---|
-| Simulacro | Anterior / disminuir |
-| Evacuación | Siguiente / aumentar |
-| Paro corto | Confirmar |
-| Paro largo | Regresar / cancelar |
+El cambio de canal y los diagnósticos usan exclusivamente las siete teclas del
+PCF8574P. Los botones directos de Simulacro, Evacuación y Paro conservan siempre
+su función operativa y no se reutilizan para navegar.
 
 Flujo de cambio de canal:
 
@@ -387,6 +374,8 @@ La documentación debe distinguir:
   AVISO/amarillo o ALERTA/rojo, sin depender de fecha juliana ni emisor.
 - Daemon receptor con BOOT OLED, verificación C1-C7, cadena continua
   `arecord → SoX → multimon-ng`, reinicio con backoff y unidad systemd.
+- Menú OLED C1-C7 y botones directos GPIO17/GPIO22/GPIO27 integrados en el
+  daemon: audio → LED → OLED, bitácora JSONL y preempción segura por EQW.
 - HW-084/DS3231 expuesto como `/dev/rtc0`; el kernel inicializa la hora civil y
   el daemon conserva evidencia RTC en el log de arranque.
 
@@ -399,7 +388,7 @@ La documentación debe distinguir:
 - Comparar receptores.
 - Definir enlace final de control con ASM-RX.
 - Congelar semántica de LEDs.
-- Integrar botones, menú y Mean Well en el daemon único.
+- Integrar Mean Well en el daemon único.
 - Cargar y validar acústicamente los cuatro WAV operativos definitivos.
 - Persistir vigencias activas y añadir watchdog de progreso.
 
